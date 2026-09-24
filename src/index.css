@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased selection:bg-indigo-500 selection:text-white;
+  }
+}
+
+/* Glassmorphism effects */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.dark .glass-card {
+  background: rgba(9, 9, 11, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Subtle ring indicator for Live status */
+@keyframes subtlePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.live-indicator-dot {
+  animation: subtlePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #e4e4e7;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #27272a;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d4d4d8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Print Optimization */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .schedule-table {
+    box-shadow: none !important;
+    border: 1px solid #71717a !important;
+  }
+}
+
+/* SweetAlert2 Theme Customization */
+.swal2-popup.swal2-modal-card {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  border-radius: 1rem !important;
+  border: 1px solid rgba(228, 228, 231, 0.9) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  padding: 1.5rem !important;
+}
+
+.dark .swal2-popup.swal2-modal-card {
+  background: #09090b !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+}
+
+.swal2-popup.swal2-custom-toast {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  border-radius: 0.875rem !important;
+  border: 1px solid rgba(228, 228, 231, 0.8) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.dark .swal2-popup.swal2-custom-toast {
+  background: #09090b !important;
+  color: #f4f4f5 !important;
+  border: 1px solid #27272a !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+.swal2-title {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+}
+
+.swal2-html-container {
+  font-size: 0.825rem !important;
+  line-height: 1.5 !important;
+}
+
+.swal2-btn-confirm,
+.swal2-btn-cancel {
+  border-radius: 0.5rem !important;
+  font-size: 0.8125rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 1.25rem !important;
+}

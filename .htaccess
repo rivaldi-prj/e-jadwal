@@ -1,0 +1,15 @@
+<IfModule mod_dir_module>
+    DirectoryIndex index.php index.html
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Jika file fisik ada di root atau assets, sajikan langsung
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Teruskan request lain ke index.php
+    RewriteRule ^(.*)$ index.php [L,QSA]
+</IfModule>
