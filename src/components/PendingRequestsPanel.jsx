@@ -12,6 +12,8 @@ import {
   Inbox,
   Mail,
   Video,
+  Zap,
+  Loader2,
 } from 'lucide-react';
 import { BATCHES, BOOKING_STATUS, TIME_SLOTS } from '../constants/scheduleConfig';
 
@@ -119,6 +121,7 @@ export function PendingRequestsPanel({
   const [expanded, setExpanded] = useState(true);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   if (pendingBookings.length === 0) return null;
 
@@ -154,28 +157,81 @@ export function PendingRequestsPanel({
     }
   };
 
+  // Setujui semua pengajuan yang tidak ada konflik (Bulk Approve)
+  const handleBulkApprove = async () => {
+    setBulkApproving(true);
+    let approved = 0;
+    let skipped = 0;
+
+    for (const booking of pendingBookings) {
+      const dupInfo = getDuplicateInfo(booking, pendingBookings, allBookings);
+      const hasConflict = dupInfo !== null && !dupInfo.canFallbackMeet;
+      const canApprove = !dupInfo || dupInfo.canFallbackMeet;
+
+      if (canApprove) {
+        const overrideRoom = dupInfo?.canFallbackMeet ? 'gmeet' : null;
+        const res = await onApprove(booking.id, overrideRoom);
+        if (res.success) approved++;
+        else skipped++;
+      } else {
+        skipped++;
+      }
+    }
+
+    setBulkApproving(false);
+    onShowToast({
+      type: approved > 0 ? 'success' : 'info',
+      title: approved > 0 ? `${approved} Jadwal Disetujui` : 'Tidak Ada yang Dapat Disetujui',
+      message: approved > 0
+        ? `${approved} jadwal berhasil disetujui sekaligus.${skipped > 0 ? ` ${skipped} lainnya perlu ditinjau manual karena ada konflik.` : ''}`
+        : 'Semua pengajuan yang tersisa memiliki konflik ruang dan perlu ditinjau satu per satu.',
+    });
+  };
+
+  // Hitung berapa yang bisa di-bulk-approve (tidak ada konflik)
+  const approvableCount = pendingBookings.filter(b => {
+    const dupInfo = getDuplicateInfo(b, pendingBookings, allBookings);
+    return !dupInfo || dupInfo.canFallbackMeet;
+  }).length;
+
   return (
     <div className="no-print mb-3 rounded-lg border border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/20 overflow-hidden transition-all">
       {/* Header */}
-      <button
-        type="button"
-        onClick={() => setExpanded(p => !p)}
-        className="w-full flex items-center justify-between px-4 py-2.5 cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      <div className="w-full flex items-center justify-between px-4 py-2.5">
+        <button
+          type="button"
+          onClick={() => setExpanded(p => !p)}
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        >
           <Inbox className="w-4 h-4 text-amber-600 dark:text-amber-400" />
           <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">
-            Permintaan Jadwal Menunggu Persetujuan
+            Permintaan Menunggu Persetujuan
           </span>
           <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold">
             {pendingBookings.length}
           </span>
-        </div>
-        {expanded
-          ? <ChevronUp className="w-4 h-4 text-amber-500" />
-          : <ChevronDown className="w-4 h-4 text-amber-500" />
-        }
-      </button>
+          {expanded
+            ? <ChevronUp className="w-4 h-4 text-amber-500" />
+            : <ChevronDown className="w-4 h-4 text-amber-500" />
+          }
+        </button>
+
+        {/* Bulk Approve Button */}
+        {approvableCount > 0 && (
+          <button
+            type="button"
+            onClick={handleBulkApprove}
+            disabled={bulkApproving}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white shadow-sm transition-all active:scale-95 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {bulkApproving
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Zap className="w-3.5 h-3.5" />
+            }
+            <span>{bulkApproving ? 'Memproses...' : `Setujui Semua (${approvableCount})`}</span>
+          </button>
+        )}
+      </div>
 
       {/* List */}
       {expanded && (

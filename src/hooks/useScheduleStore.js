@@ -631,17 +631,27 @@ export function useScheduleStore() {
     }
 
     const now = new Date().toISOString();
+
+    // ── AUTO-APPROVE LOGIC ──
+    // Jika slot sepenuhnya kosong (tidak ada konflik sama sekali),
+    // pengajuan langsung disetujui tanpa perlu antrian manual.
+    // Hanya pengajuan yang benar-benar konflik yang masuk antrian PENDING.
+    const bothRoomsFull = zoomApproved && gmeetOccupied;
+    const canAutoApprove = !bothRoomsFull; // setidaknya satu ruang masih kosong
+    const autoApproveStatus = canAutoApprove ? BOOKING_STATUS.APPROVED : BOOKING_STATUS.PENDING;
+
     const newBooking = {
       ...bookingData,
       id: `req-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
       room: assignedRoom || 'zoom',
-      status: BOOKING_STATUS.PENDING,
+      status: autoApproveStatus,
       requestedBy: bookingData.requestedBy || 'Publik',
       requesterEmail: bookingData.requesterEmail || '',
       requestedAt: now,
-      approvedAt: null,
+      approvedAt: canAutoApprove ? now : null,
       rejectReason: '',
       updatedAt: now,
+      autoApproved: canAutoApprove,
     };
 
     const client = getSupabaseClient();
@@ -655,10 +665,11 @@ export function useScheduleStore() {
           note: newBooking.note,
           pic: newBooking.pic || '',
           updated_at: newBooking.updatedAt,
-          status: BOOKING_STATUS.PENDING,
+          status: autoApproveStatus,
           requested_by: newBooking.requestedBy,
           requester_email: newBooking.requesterEmail,
           requested_at: newBooking.requestedAt,
+          approved_at: newBooking.approvedAt,
           room: newBooking.room,
         };
         let { error: insErr } = await client.from('bookings').insert(insertPayload);
@@ -700,27 +711,39 @@ export function useScheduleStore() {
     localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(updated));
     broadcastChange('BOOKINGS_UPDATED', updated);
 
-    // 1. Kirim email konfirmasi ke mahasiswa bahwa pengajuannya telah diterima
-    if (newBooking.requesterEmail) {
-      sendSubmissionEmail(newBooking).then((emailRes) => {
-        if (emailRes.success) {
-          console.log(`Email konfirmasi pengajuan terkirim ke ${newBooking.requesterEmail}`);
-        } else if (!emailRes.skipped) {
-          console.warn('Gagal kirim email konfirmasi:', emailRes.message);
+    if (canAutoApprove) {
+      // Auto-disetujui: langsung kirim email persetujuan ke mahasiswa
+      if (newBooking.requesterEmail) {
+        sendApprovalEmail(newBooking, zoomConfig).then((emailRes) => {
+          if (emailRes.success) {
+            console.log(`[AutoApprove] Email persetujuan terkirim ke ${newBooking.requesterEmail}`);
+          } else if (!emailRes.skipped) {
+            console.warn('[AutoApprove] Gagal kirim email persetujuan:', emailRes.message);
+          }
+        });
+      }
+    } else {
+      // Tidak bisa auto-approve (kedua ruang penuh) → masuk antrian manual
+      if (newBooking.requesterEmail) {
+        sendSubmissionEmail(newBooking).then((emailRes) => {
+          if (emailRes.success) {
+            console.log(`Email konfirmasi pengajuan terkirim ke ${newBooking.requesterEmail}`);
+          } else if (!emailRes.skipped) {
+            console.warn('Gagal kirim email konfirmasi:', emailRes.message);
+          }
+        });
+      }
+      // Notifikasi operator hanya untuk kasus yang butuh review manual
+      sendOperatorNotificationEmail(newBooking).then((opRes) => {
+        if (opRes?.success) {
+          console.log(`Email notifikasi pengajuan baru terkirim ke Operator Prodi (${opRes.operatorEmail})`);
+        } else if (!opRes?.skipped) {
+          console.warn('Gagal kirim notifikasi ke operator:', opRes?.message);
         }
       });
     }
 
-    // 2. Kirim email notifikasi instan ke Operator Prodi agar langsung tahu lewat HP
-    sendOperatorNotificationEmail(newBooking).then((opRes) => {
-      if (opRes?.success) {
-        console.log(`Email notifikasi pengajuan baru berhasil terkirim ke Operator Prodi (${opRes.operatorEmail})`);
-      } else if (!opRes?.skipped) {
-        console.warn('Gagal kirim notifikasi ke operator:', opRes?.message);
-      }
-    });
-
-    return { success: true, booking: newBooking };
+    return { success: true, booking: newBooking, autoApproved: canAutoApprove };
   }, [bookings, broadcastChange]);
 
   // Admin: setujui booking PENDING (dengan auto-failover ke Google Meet jika Zoom terisi)

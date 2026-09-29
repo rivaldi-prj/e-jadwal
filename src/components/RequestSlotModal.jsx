@@ -18,6 +18,7 @@ import {
   Ban,
   CheckCircle2,
   Video,
+  CheckCircle,
 } from 'lucide-react';
 import { TIME_SLOTS, DAYS_OF_WEEK, BATCHES } from '../constants/scheduleConfig';
 import { DOSEN_NAMES, MATA_KULIAH_LIST, getCoursesByDosen, getDosenByCourse } from '../constants/academicData';
@@ -355,7 +356,7 @@ export function RequestSlotModal({
       if (res.booking) {
         saveMyRequest(res.booking);
       }
-      setFormData(prev => ({ ...prev, room: res.booking?.room || finalRoom }));
+      setFormData(prev => ({ ...prev, room: res.booking?.room || finalRoom, _autoApproved: res.autoApproved }));
       setSubmitted(true);
     } else {
       setErrorMessage(res?.message || 'Gagal mengirim permintaan jadwal.');
@@ -365,16 +366,39 @@ export function RequestSlotModal({
   if (!isOpen) return null;
 
   if (submitted) {
+    const isAutoApproved = formData._autoApproved;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
         <div className="w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-8 text-center animate-modal-pop">
-          <div className="w-14 h-14 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center mx-auto mb-4">
-            <Send className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+            isAutoApproved
+              ? 'bg-emerald-100 dark:bg-emerald-900/40'
+              : 'bg-amber-100 dark:bg-amber-900/40'
+          }`}>
+            {isAutoApproved
+              ? <CheckCircle className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
+              : <Send className="w-7 h-7 text-amber-600 dark:text-amber-400" />
+            }
           </div>
-          <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 mb-2">Permintaan Berhasil Dikirim!</h3>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-3">
-            Pengajuan untuk <strong>{formData.note}</strong> ({formData.day}, {formData.timeSlot}) telah terkirim ke sistem. Operator prodi akan otomatis menerima pemberitahuan dan meninjau jadwal Anda.
-          </p>
+
+          {isAutoApproved ? (
+            <>
+              <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 mb-2">
+                🎉 Jadwal Langsung Disetujui!
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-3">
+                Jadwal <strong>{formData.note}</strong> ({formData.day}, {formData.timeSlot}) telah <strong className="text-emerald-600">disetujui otomatis</strong> karena ruang virtual tersedia. Email konfirmasi dikirimkan ke email Anda.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 mb-2">Permintaan Berhasil Dikirim!</h3>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-3">
+                Pengajuan untuk <strong>{formData.note}</strong> ({formData.day}, {formData.timeSlot}) telah terkirim ke sistem. Operator prodi akan meninjau jadwal Anda secara manual karena ada potensi konflik ruang.
+              </p>
+            </>
+          )}
+
           <div className="mb-5 p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs flex items-center justify-center gap-2">
             <Video className={`w-3.5 h-3.5 ${formData.room === 'gmeet' ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
             <span className="text-slate-700 dark:text-zinc-300 font-medium">
