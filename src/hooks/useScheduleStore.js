@@ -65,12 +65,23 @@ function getSlotMinutes(timeSlotLabel) {
 }
 
 export function useScheduleStore() {
+  // Inisialisasi awal: jika Supabase tersedia, mulai dengan array kosong —
+  // data otomatis diisi saat initCloudSync() selesai. Ini memastikan
+  // semua browser (Chrome, Brave, incognito) menampilkan data yang SAMA dari
+  // cloud, bukan data berbeda dari localStorage masing-masing browser.
   const [bookings, setBookings] = useState(() => {
     try {
+      if (isSupabaseConfigured()) {
+        // Supabase dikonfigurasi: gunakan localStorage hanya sebagai cache sementara
+        // sampai cloud data tiba (mengurangi flash of empty content)
+        const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
+        return saved ? JSON.parse(saved) : [];
+      }
+      // Offline mode: gunakan localStorage atau INITIAL_BOOKINGS
       const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
       return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
     } catch {
-      return INITIAL_BOOKINGS;
+      return isSupabaseConfigured() ? [] : INITIAL_BOOKINGS;
     }
   });
 
@@ -411,8 +422,85 @@ export function useScheduleStore() {
 
     initCloudSync();
 
+    // ── POLLING FALLBACK ───────────────────────────────────────────────────
+    // Re-fetch setiap 30 detik sebagai backup jika Realtime WebSocket terputus.
+    // Ini memastikan data tetap sinkron di Netlify production bahkan jika
+    // koneksi WebSocket long-lived putus karena timeout/proxy CDN.
+    const pollInterval = setInterval(async () => {
+      if (!isMounted) return;
+      try {
+        const { data: pollData } = await client.from('bookings').select('*').order('day');
+        if (isMounted && pollData) {
+          const mapped = pollData.map((b) => {
+            const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
+            const room = b.room || (hasGmeetTag ? 'gmeet' : null) || 'zoom';
+            return {
+              id: b.id,
+              day: b.day,
+              timeSlot: b.time_slot,
+              batch: b.batch,
+              note: b.note,
+              pic: b.pic || '',
+              updatedAt: b.updated_at,
+              status: b.status || BOOKING_STATUS.APPROVED,
+              requestedBy: b.requested_by || '',
+              requesterEmail: b.requester_email || '',
+              requestedAt: b.requested_at || null,
+              approvedAt: b.approved_at || null,
+              rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
+              room,
+            };
+          });
+          setBookings(mapped);
+          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(mapped));
+          setLastSyncTime(new Date());
+        }
+      } catch {
+        // Silent: polling failure tidak perlu ditampilkan ke user
+      }
+    }, 30000); // Setiap 30 detik
+
+    // ── VISIBILITAS TAB: refetch saat user kembali ke tab ini ───────────────────
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        try {
+          const { data: visData } = await client.from('bookings').select('*').order('day');
+          if (isMounted && visData) {
+            const mapped = visData.map((b) => {
+              const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
+              const room = b.room || (hasGmeetTag ? 'gmeet' : null) || 'zoom';
+              return {
+                id: b.id,
+                day: b.day,
+                timeSlot: b.time_slot,
+                batch: b.batch,
+                note: b.note,
+                pic: b.pic || '',
+                updatedAt: b.updated_at,
+                status: b.status || BOOKING_STATUS.APPROVED,
+                requestedBy: b.requested_by || '',
+                requesterEmail: b.requester_email || '',
+                requestedAt: b.requested_at || null,
+                approvedAt: b.approved_at || null,
+                rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
+                room,
+              };
+            });
+            setBookings(mapped);
+            localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(mapped));
+            setLastSyncTime(new Date());
+          }
+        } catch {
+          // Silent
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       isMounted = false;
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (subscriptionChannel && client) {
         client.removeChannel(subscriptionChannel);
       }

@@ -2,6 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 
 const STORAGE_KEY = 'supabase_config_v1';
 
+// ── FALLBACK HARDCODED CREDENTIALS ────────────────────────────────────────────
+// Supabase anon key is a PUBLIC key by design (secured via RLS policies).
+// Hardcoding it here ensures every browser (Chrome, Brave, incognito, Netlify)
+// always connects to Supabase for realtime sync — no manual config needed.
+// Priority: manual admin config (localStorage) > env vars > hardcoded fallback
+const HARDCODED_SUPABASE_URL = 'https://xgawnlzippscyknydqmt.supabase.co';
+const HARDCODED_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnYXdubHppcHBzY3lrbnlkcW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDI3NjgsImV4cCI6MjEwNTcxODc2OH0.-rZ8yq4ISMlgmCmrHE2zkyb3Sw5ZxnVO8wUfmVcsEck';
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Smart cleaner for Supabase URL (extracts https://[id].supabase.co even if full rest URL or .env block is pasted)
 export function cleanSupabaseUrl(raw) {
   if (!raw) return '';
@@ -77,6 +86,15 @@ export function getSupabaseConfig() {
       url: envUrl,
       anonKey: envKey,
       source: 'env',
+    };
+  }
+
+  // Fallback to hardcoded credentials (public anon key — safe to embed)
+  if (HARDCODED_SUPABASE_URL && HARDCODED_SUPABASE_ANON_KEY) {
+    return {
+      url: HARDCODED_SUPABASE_URL,
+      anonKey: HARDCODED_SUPABASE_ANON_KEY,
+      source: 'hardcoded',
     };
   }
 
