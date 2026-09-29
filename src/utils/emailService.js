@@ -381,7 +381,7 @@ function generateEmailHtml({
  * Template Email Notifikasi Khusus untuk Operator / Pengelola Prodi
  * Dikirim saat ada mahasiswa yang baru saja mengajukan jadwal
  */
-function generateOperatorAlertHtml({ booking, appUrl }) {
+function generateOperatorAlertHtml({ booking, appUrl, isAutoApproved = false }) {
   const yearNow = new Date().getFullYear();
   const dateStr = new Date().toLocaleDateString("id-ID", {
     weekday: "long",
@@ -392,13 +392,16 @@ function generateOperatorAlertHtml({ booking, appUrl }) {
     minute: "2-digit",
   });
 
+  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
+  const roomName = isGmeet ? "Google Meet" : "Zoom";
+
   return `
 <!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pengajuan Jadwal Zoom Baru</title>
+  <title>${isAutoApproved ? "Jadwal Perkuliahan Baru (Auto-Approved)" : "Pengajuan Jadwal Kuliah Baru"}</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
   <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; padding: 30px 10px;">
@@ -407,7 +410,7 @@ function generateOperatorAlertHtml({ booking, appUrl }) {
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
           <!-- Header -->
           <tr>
-            <td style="background-color: #0f172a; padding: 24px 30px; text-align: left; border-bottom: 3px solid #f59e0b;">
+            <td style="background-color: #0f172a; padding: 24px 30px; text-align: left; border-bottom: 3px solid ${isAutoApproved ? '#0d9488' : '#f59e0b'};">
               <p style="margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; font-weight: 600;">
                 UNIVERSITAS BAITURRAHMAH &bull; FIKES
               </p>
@@ -422,18 +425,20 @@ function generateOperatorAlertHtml({ booking, appUrl }) {
             <td style="padding: 28px 30px;">
               <!-- Status Badge -->
               <div style="margin-bottom: 16px;">
-                <span style="display: inline-block; padding: 5px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background-color: #fef3c7; color: #92400e;">
-                  🔔 PENGAJUAN JADWAL MASUK
+                <span style="display: inline-block; padding: 5px 12px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; background-color: ${isAutoApproved ? '#dcfce7' : '#fef3c7'}; color: ${isAutoApproved ? '#15803d' : '#92400e'};">
+                  ${isAutoApproved ? '⚡ JADWAL OTOMATIS DISETUJUI' : '🔔 PENGAJUAN JADWAL MASUK'}
                 </span>
               </div>
 
               <h2 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 750; color: #0f172a;">
-                Ada Pengajuan Jadwal Baru dari Mahasiswa
+                ${isAutoApproved ? 'Jadwal Kuliah Baru Berhasil Disetujui Otomatis' : 'Ada Pengajuan Jadwal Baru dari Mahasiswa'}
               </h2>
 
               <p style="margin: 0 0 20px 0; font-size: 13.5px; line-height: 1.6; color: #475569;">
                 Halo <strong>Operator / Pengelola Prodi</strong>,<br>
-                Terdapat pengajuan jadwal perkuliahan daring baru yang masuk ke dalam antrian sistem dan memerlukan tinjauan Anda:
+                ${isAutoApproved
+                  ? `Terdapat jadwal perkuliahan daring baru yang telah <strong>OTOMATIS DISETUJUI</strong> oleh sistem karena ruang virtual (<strong>${roomName}</strong>) tersedia. Mahasiswa telah otomatis menerima kredensial akses dan jadwal langsung aktif di matriks:`
+                  : `Terdapat pengajuan jadwal perkuliahan daring baru yang masuk ke dalam antrian sistem dan memerlukan tinjauan Anda:`}
               </p>
 
               <!-- Booking Details Card -->
@@ -459,6 +464,12 @@ function generateOperatorAlertHtml({ booking, appUrl }) {
                     <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${booking.day || "-"} (${booking.timeSlot || "-"} WIB)</td>
                   </tr>
                   <tr>
+                    <td style="padding: 6px 0; color: #64748b;">Ruang Platform:</td>
+                    <td style="padding: 6px 0; font-weight: 700; color: ${isGmeet ? '#0d9488' : '#0284c7'};">
+                      ${roomName} ${isAutoApproved ? '(Telah Dialokasikan)' : ''}
+                    </td>
+                  </tr>
+                  <tr>
                     <td style="padding: 6px 0; color: #64748b;">Angkatan:</td>
                     <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${booking.batch || "-"}</td>
                   </tr>
@@ -470,6 +481,16 @@ function generateOperatorAlertHtml({ booking, appUrl }) {
               </div>
 
               <!-- Action Card for Mobile Operator -->
+              ${isAutoApproved ? `
+              <div style="margin-top: 24px; padding: 20px; background-color: #f0fdf4; border-radius: 12px; text-align: center; border: 1px solid #bbf7d0;">
+                <p style="margin: 0 0 14px 0; font-size: 12.5px; color: #166534; line-height: 1.5;">
+                  Jadwal ini sudah aktif di matriks. Anda dapat melihat kalender jadwal lengkap melalui aplikasi:
+                </p>
+                <a href="${appUrl}" target="_blank" style="display: inline-block; background: #15803d; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13.5px; padding: 12px 28px; border-radius: 8px; box-shadow: 0 4px 10px rgba(21,128,61,0.25);">
+                  Buka E-Jadwal &amp; Lihat Matriks &rarr;
+                </a>
+              </div>
+              ` : `
               <div style="margin-top: 24px; padding: 20px; background-color: #f1f5f9; border-radius: 12px; text-align: center; border: 1px solid #e2e8f0;">
                 <p style="margin: 0 0 14px 0; font-size: 12.5px; color: #334155; line-height: 1.5;">
                   Buka aplikasi langsung dari HP atau laptop Anda untuk <strong>Menyetujui</strong> atau <strong>Menolak</strong> jadwal ini:
@@ -478,9 +499,10 @@ function generateOperatorAlertHtml({ booking, appUrl }) {
                   Buka E-Jadwal &amp; Tinjau Pengajuan &rarr;
                 </a>
               </div>
+              `}
 
               <p style="margin: 20px 0 0 0; font-size: 11.5px; line-height: 1.5; color: #94a3b8; text-align: center;">
-                *Notifikasi ini otomatis dikirimkan ke email Operator Prodi agar dapat segera ditindaklanjuti meski tidak sedang berada di kampus.
+                *Notifikasi ini otomatis dikirimkan ke email Operator Prodi agar dapat segera dipantau langsung dari HP.
               </p>
             </td>
           </tr>
@@ -874,7 +896,7 @@ export async function sendTestEmail(targetEmail) {
  * Kirim email notifikasi instan ke Operator / Pengelola Prodi
  * saat ada mahasiswa yang baru saja mengajukan jadwal
  */
-export async function sendOperatorNotificationEmail(booking) {
+export async function sendOperatorNotificationEmail(booking, isAutoApproved = false) {
   const cfg = getEmailConfig();
   if (!cfg.enabled) {
     return { success: false, skipped: true, message: "Layanan email dinonaktifkan." };
@@ -885,7 +907,12 @@ export async function sendOperatorNotificationEmail(booking) {
     return { success: false, skipped: true, message: "Email operator belum dikonfigurasi di Pengaturan." };
   }
 
-  const subject = `[NOTIFIKASI PRODI] Ada Pengajuan Jadwal Zoom Baru: ${booking.note || "Perkuliahan"} (${booking.day || ""})`;
+  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
+  const roomName = isGmeet ? "Google Meet" : "Zoom";
+
+  const subject = isAutoApproved
+    ? `[NOTIFIKASI PRODI] Jadwal Baru Auto-Approved (${roomName}): ${booking.note || "Perkuliahan"} - ${booking.day || ""} (${booking.timeSlot || ""})`
+    : `[NOTIFIKASI PRODI] Ada Pengajuan Jadwal Baru: ${booking.note || "Perkuliahan"} (${booking.day || ""})`;
 
   // Buat URL aplikasi agar operator bisa langsung klik dari HP untuk membuka web
   const appUrl = typeof window !== "undefined"
@@ -895,6 +922,7 @@ export async function sendOperatorNotificationEmail(booking) {
   const htmlContent = generateOperatorAlertHtml({
     booking,
     appUrl,
+    isAutoApproved,
   });
 
   const emailJsParams = {
@@ -905,24 +933,27 @@ export async function sendOperatorNotificationEmail(booking) {
     to_name: "Operator E-Jadwal Prodi",
     name: "Operator E-Jadwal Prodi",
     subject,
-    status_label: "PENGAJUAN BARU MASUK",
-    status: "pending",
+    status_label: isAutoApproved ? "OTOMATIS DISETUJUI" : "PENGAJUAN BARU MASUK",
+    status: isAutoApproved ? "approved" : "pending",
     course_name: booking.note || "Perkuliahan",
     day: booking.day || "-",
     time_slot: booking.timeSlot || "-",
     batch: booking.batch || "-",
     lecturer: booking.pic || "-",
     reject_reason: "-",
+    room_platform: roomName,
     zoom_visible: "none",
-    zoom_name: "-",
+    zoom_name: isGmeet ? "Google Meet (Alternatif)" : "Zoom",
     zoom_meeting_id: "-",
     zoom_passcode: "-",
     zoom_url: appUrl,
-    message: `Halo Operator Prodi, terdapat pengajuan jadwal baru untuk mata kuliah ${booking.note} pada hari ${booking.day} (${booking.timeSlot} WIB) yang diajukan oleh ${booking.requestedBy || "Mahasiswa"}. Silakan buka aplikasi untuk menyetujui atau menolak.`,
+    message: isAutoApproved
+      ? `Halo Operator Prodi, terdapat pengajuan jadwal baru untuk mata kuliah ${booking.note} pada hari ${booking.day} (${booking.timeSlot} WIB) yang telah OTOMATIS DISETUJUI oleh sistem (Ruang ${roomName} tersedia).`
+      : `Halo Operator Prodi, terdapat pengajuan jadwal baru untuk mata kuliah ${booking.note} pada hari ${booking.day} (${booking.timeSlot} WIB) yang diajukan oleh ${booking.requestedBy || "Mahasiswa"}. Silakan buka aplikasi untuk menyetujui atau menolak.`,
   };
 
   try {
-    console.log(`[EmailService] Mengirim notifikasi pengajuan baru ke Operator: ${operatorEmail}`);
+    console.log(`[EmailService] Mengirim notifikasi pengajuan baru (${isAutoApproved ? 'Auto-Approved' : 'Manual Review'}) ke Operator: ${operatorEmail}`);
     const res = await dispatchEmail({
       toEmail: operatorEmail,
       toName: "Operator E-Jadwal Prodi",

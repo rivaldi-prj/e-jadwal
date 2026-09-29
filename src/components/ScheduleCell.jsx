@@ -29,13 +29,13 @@ function BookingCard({
 
   const batchInfo = booking
     ? BATCHES.find(b => b.id === booking.batch) || {
-        badge: 'bg-white/80 text-zinc-800',
-        cardBg: 'bg-white dark:bg-zinc-850 text-zinc-900 dark:text-zinc-100 shadow-sm',
-        avatarBg: 'bg-zinc-900 text-white',
-        progressSolid: 'bg-zinc-900 dark:bg-zinc-100',
-        progressMuted: 'bg-zinc-900/20 dark:bg-zinc-100/20',
-        dot: 'bg-zinc-400',
-      }
+      badge: 'bg-white/80 text-zinc-800',
+      cardBg: 'bg-white dark:bg-zinc-850 text-zinc-900 dark:text-zinc-100 shadow-sm',
+      avatarBg: 'bg-zinc-900 text-white',
+      progressSolid: 'bg-zinc-900 dark:bg-zinc-100',
+      progressMuted: 'bg-zinc-900/20 dark:bg-zinc-100/20',
+      dot: 'bg-zinc-400',
+    }
     : null;
 
   const handleClick = (e) => {
@@ -52,9 +52,8 @@ function BookingCard({
       <div
         onClick={handleClick}
         title={`[MENUNGGU PERSETUJUAN]\n${booking.note || 'Perkuliahan'}\nRuang: ${isGmeet ? 'Google Meet' : 'Zoom'}\nPemohon: ${booking.requestedBy || '-'}\nDosen: ${booking.pic || '-'}\n(Klik untuk setujui/tolak)`}
-        className={`group relative p-2.5 sm:p-3 rounded-2xl bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-          isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
-        } ${isPast ? 'opacity-50 grayscale-[30%]' : ''}`}
+        className={`group relative p-2.5 sm:p-3 rounded-2xl bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
+          } ${isPast ? 'opacity-50 grayscale-[30%]' : ''}`}
       >
         <div className="flex items-start justify-between gap-1.5">
           <h4
@@ -113,9 +112,8 @@ function BookingCard({
     <div
       onClick={handleClick}
       title={`${booking.note || 'Perkuliahan'}\nRuang: ${isGmeet ? 'Google Meet' : 'Zoom Kebidanan'}\nDosen: ${booking.pic || '-'}\nAngkatan: ${booking.batch}\n(Klik untuk detail)`}
-      className={`group relative p-2.5 sm:p-3 rounded-2xl ${batchInfo?.cardBg || ''} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer flex flex-col justify-between ${
-        isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
-      } ${isLiveNow ? 'ring-2 ring-emerald-500 shadow-md z-10' : ''} ${isPast ? 'opacity-55 grayscale-[20%] saturate-50' : ''}`}
+      className={`group relative p-2.5 sm:p-3 rounded-2xl ${batchInfo?.cardBg || ''} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer flex flex-col justify-between ${isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
+        } ${isLiveNow ? 'ring-2 ring-emerald-500 shadow-md z-10' : ''} ${isPast ? 'opacity-55 grayscale-[20%] saturate-50' : ''}`}
     >
       {/* Badge Selesai – hanya pada slot hari ini yang sudah lewat */}
       {isPast && (
@@ -268,12 +266,11 @@ export function ScheduleCell({
           isAdmin
             ? `Klik untuk jadwalkan sesi ${slot.label} (${day})`
             : onRequestSlot
-            ? `Klik untuk ajukan permintaan jadwal pada sesi ${slot.label} (${day})`
-            : `Tidak ada perkuliahan (${day}, ${slot.label} WIB)`
+              ? `Klik untuk ajukan permintaan jadwal pada sesi ${slot.label} (${day})`
+              : `Tidak ada perkuliahan (${day}, ${slot.label} WIB)`
         }
-        className={`group relative p-2.5 sm:p-3 rounded-2xl bg-white/70 dark:bg-zinc-900/50 border-2 border-dashed border-zinc-200/90 dark:border-zinc-800 hover:border-emerald-500 hover:bg-white dark:hover:bg-zinc-850 dark:hover:border-emerald-400 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px] sm:min-h-[120px] ${
-          isAdmin || onRequestSlot ? 'cursor-pointer' : 'cursor-default'
-        }`}
+        className={`group relative p-2.5 sm:p-3 rounded-2xl bg-white/70 dark:bg-zinc-900/50 border-2 border-dashed border-zinc-200/90 dark:border-zinc-800 hover:border-emerald-500 hover:bg-white dark:hover:bg-zinc-850 dark:hover:border-emerald-400 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px] sm:min-h-[120px] ${isAdmin || onRequestSlot ? 'cursor-pointer' : 'cursor-default'
+          }`}
       >
         <div className="flex items-center justify-between text-zinc-400 dark:text-zinc-400">
           <span className="text-[10px] font-mono font-medium whitespace-nowrap">{slot.label}</span>

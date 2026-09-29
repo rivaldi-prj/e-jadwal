@@ -712,7 +712,7 @@ export function useScheduleStore() {
     broadcastChange('BOOKINGS_UPDATED', updated);
 
     if (canAutoApprove) {
-      // Auto-disetujui: langsung kirim email persetujuan ke mahasiswa
+      // 1. Auto-disetujui: langsung kirim email persetujuan ke mahasiswa (link Zoom/Meet + kredensial)
       if (newBooking.requesterEmail) {
         sendApprovalEmail(newBooking, zoomConfig).then((emailRes) => {
           if (emailRes.success) {
@@ -722,6 +722,18 @@ export function useScheduleStore() {
           }
         });
       }
+
+      // 2. Kirim notifikasi instan ke Operator Prodi (Auto-Approved)
+      // Diberi jeda 400ms agar request API EmailJS tidak bertabrakan secara simultan
+      setTimeout(() => {
+        sendOperatorNotificationEmail(newBooking, true).then((opRes) => {
+          if (opRes?.success) {
+            console.log(`[AutoApprove] Notifikasi pengajuan baru terkirim ke Operator (${opRes.operatorEmail})`);
+          } else if (!opRes?.skipped) {
+            console.warn('[AutoApprove] Gagal kirim notifikasi ke operator:', opRes?.message);
+          }
+        });
+      }, 400);
     } else {
       // Tidak bisa auto-approve (kedua ruang penuh) → masuk antrian manual
       if (newBooking.requesterEmail) {
@@ -733,18 +745,21 @@ export function useScheduleStore() {
           }
         });
       }
-      // Notifikasi operator hanya untuk kasus yang butuh review manual
-      sendOperatorNotificationEmail(newBooking).then((opRes) => {
-        if (opRes?.success) {
-          console.log(`Email notifikasi pengajuan baru terkirim ke Operator Prodi (${opRes.operatorEmail})`);
-        } else if (!opRes?.skipped) {
-          console.warn('Gagal kirim notifikasi ke operator:', opRes?.message);
-        }
-      });
+
+      // Notifikasi operator untuk kasus yang butuh review manual
+      setTimeout(() => {
+        sendOperatorNotificationEmail(newBooking, false).then((opRes) => {
+          if (opRes?.success) {
+            console.log(`Email notifikasi pengajuan baru terkirim ke Operator Prodi (${opRes.operatorEmail})`);
+          } else if (!opRes?.skipped) {
+            console.warn('Gagal kirim notifikasi ke operator:', opRes?.message);
+          }
+        });
+      }, 400);
     }
 
     return { success: true, booking: newBooking, autoApproved: canAutoApprove };
-  }, [bookings, broadcastChange]);
+  }, [bookings, zoomConfig, broadcastChange]);
 
   // Admin: setujui booking PENDING (dengan auto-failover ke Google Meet jika Zoom terisi)
   const approveBooking = useCallback(async (id, overrideRoom = null) => {
