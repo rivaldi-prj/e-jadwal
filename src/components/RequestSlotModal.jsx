@@ -113,6 +113,7 @@ export function RequestSlotModal({
         ...prev,
         day: initialData.day || DAYS_OF_WEEK[0],
         timeSlot: initialData.slot?.label || TIME_SLOTS[0].label,
+        room: 'zoom',
       }));
     }
     if (!isOpen) {
@@ -399,11 +400,22 @@ export function RequestSlotModal({
             </>
           )}
 
-          <div className="mb-5 p-2.5 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs flex items-center justify-center gap-2">
-            <Video className={`w-3.5 h-3.5 ${formData.room === 'gmeet' ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
-            <span className="text-slate-700 dark:text-zinc-300 font-medium">
-              Ruang: <strong className={formData.room === 'gmeet' ? 'text-sky-700 dark:text-sky-300' : 'text-emerald-700 dark:text-emerald-300'}>{formData.room === 'gmeet' ? 'Google Meet' : 'Zoom'}</strong>
-            </span>
+          <div className="mb-5 p-3 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center gap-2">
+              <Video className={`w-3.5 h-3.5 ${formData.room === 'gmeet' ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
+              <span className="text-slate-700 dark:text-zinc-300 font-medium">
+                Ruang Perkuliahan: <strong className={formData.room === 'gmeet' ? 'text-sky-700 dark:text-sky-300' : 'text-emerald-700 dark:text-emerald-300'}>{formData.room === 'gmeet' ? 'Google Meet' : 'Zoom'}</strong>
+              </span>
+            </div>
+            {formData.room === 'gmeet' ? (
+              <span className="text-[10.5px] text-sky-700 dark:text-sky-300 font-medium">
+                (Dialihkan ke Google Meet karena ruang Zoom pada jam ini telah terisi)
+              </span>
+            ) : (
+              <span className="text-[10.5px] text-emerald-700 dark:text-emerald-300 font-medium">
+                (Ruang Virtual Zoom Utama)
+              </span>
+            )}
           </div>
           <div className="flex flex-col gap-2">
             {onOpenTrackModal && (

@@ -611,11 +611,13 @@ export function useScheduleStore() {
       return isApprovedBooking(b) && room === 'gmeet' && checkSlotsOverlap(bookingData.timeSlot, b.timeSlot);
     });
 
-    let assignedRoom = bookingData.room;
-    if (!assignedRoom || (assignedRoom === 'zoom' && zoomApproved)) {
-      if (!zoomApproved) {
-        assignedRoom = 'zoom';
-      } else if (!gmeetOccupied) {
+    // ── ATURAN ALOKASI RUANG VIRTUAL ──
+    // 1. Zoom SELALU menjadi prioritas utama untuk semua pengajuan jika slot Zoom masih kosong.
+    // 2. Google Meet HANYA dialokasikan jika slot Zoom pada jam tersebut sudah terisi perkuliahan lain.
+    // 3. Jika kedua ruang (Zoom & Meet) sudah terisi, tolak dengan pesan bahwa slot penuh.
+    let assignedRoom = 'zoom';
+    if (zoomApproved) {
+      if (!gmeetOccupied) {
         assignedRoom = 'gmeet';
       } else {
         return {
@@ -623,11 +625,6 @@ export function useScheduleStore() {
           message: `Kedua ruang virtual (Zoom dan Google Meet) pada hari ${bookingData.day} (${bookingData.timeSlot} WIB) sudah terisi penuh. Silakan pilih jam atau hari lain.`,
         };
       }
-    } else if (assignedRoom === 'gmeet' && gmeetOccupied) {
-      return {
-        success: false,
-        message: `Ruang Google Meet pada hari ${bookingData.day} (${bookingData.timeSlot} WIB) sudah terisi perkuliahan lain. Silakan pilih jam atau hari lain.`,
-      };
     }
 
     const now = new Date().toISOString();
