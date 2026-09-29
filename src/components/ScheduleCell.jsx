@@ -149,14 +149,14 @@ function BookingCard({
         {isGmeet ? (
           <span
             title="Ruang Google Meet Resmi"
-            className="inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-teal-600/90 text-white shadow-2xs tracking-tight"
+            className="inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-teal-600 dark:bg-teal-600 text-white shadow-2xs tracking-tight"
           >
             <Video className="w-2.5 h-2.5" /> Google Meet
           </span>
         ) : (
           <span
             title="Ruang Zoom Resmi Kebidanan"
-            className="inline-flex items-center text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-[#17324D]/80 text-white shadow-2xs tracking-tight"
+            className="inline-flex items-center text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-[#17324D] dark:bg-sky-600 text-white shadow-2xs tracking-tight"
           >
             Zoom
           </span>
@@ -222,13 +222,13 @@ export function ScheduleCell({
             ? `Klik untuk ajukan permintaan jadwal pada sesi ${slot.label} (${day})`
             : `Tidak ada perkuliahan (${day}, ${slot.label} WIB)`
         }
-        className={`group relative p-2.5 sm:p-3 rounded-2xl bg-white/70 dark:bg-zinc-900/40 border-2 border-dashed border-zinc-200/90 dark:border-zinc-800/80 hover:border-emerald-500 hover:bg-white dark:hover:bg-zinc-850 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px] sm:min-h-[120px] ${
+        className={`group relative p-2.5 sm:p-3 rounded-2xl bg-white/70 dark:bg-zinc-900/50 border-2 border-dashed border-zinc-200/90 dark:border-zinc-800 hover:border-emerald-500 hover:bg-white dark:hover:bg-zinc-850 dark:hover:border-emerald-400 transition-all duration-200 cursor-pointer flex flex-col justify-between min-h-[110px] sm:min-h-[120px] ${
           isAdmin || onRequestSlot ? 'cursor-pointer' : 'cursor-default'
         }`}
       >
-        <div className="flex items-center justify-between text-zinc-400 dark:text-zinc-500">
+        <div className="flex items-center justify-between text-zinc-400 dark:text-zinc-400">
           <span className="text-[10px] font-mono font-medium whitespace-nowrap">{slot.label}</span>
-          <span className="text-zinc-300 dark:text-zinc-600 font-mono text-xs">—</span>
+          <span className="text-zinc-300 dark:text-zinc-500 font-mono text-xs">—</span>
         </div>
 
         <div className="flex flex-col items-center justify-center my-1">
@@ -243,11 +243,11 @@ export function ScheduleCell({
               <span>Ajukan Jadwal</span>
             </div>
           ) : (
-            <span className="text-xs text-zinc-300 dark:text-zinc-700">Kosong</span>
+            <span className="text-xs text-zinc-300 dark:text-zinc-600">Kosong</span>
           )}
         </div>
 
-        <div className="text-[9.5px] text-zinc-400 dark:text-zinc-500 text-center truncate">
+        <div className="text-[9.5px] text-zinc-400 dark:text-zinc-400 text-center truncate">
           Ruang Tersedia
         </div>
       </div>

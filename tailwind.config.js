@@ -8,6 +8,10 @@ export default {
   theme: {
     extend: {
       colors: {
+        zinc: {
+          750: '#2b2b33',
+          850: '#1c1c21',
+        },
         batch: {
           2023: {
             light: '#e0f2fe',
