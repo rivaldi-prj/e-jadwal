@@ -1,15 +1,21 @@
 <IfModule mod_dir_module>
-    DirectoryIndex index.php index.html
+    DirectoryIndex index.php
 </IfModule>
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Jika file fisik ada di root atau assets, sajikan langsung
-    RewriteCond %{REQUEST_FILENAME} -f [OR]
-    RewriteCond %{REQUEST_FILENAME} -d
+    # Jangan sajikan langsung index.html mentah (Vite source), arahkan ke index.php launcher
+    RewriteRule ^index\.html$ index.php [L]
+
+    # Sajikan assets langsung dari dist/assets/
+    RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
+
+    # Jika file fisik ada (gambar, logo, favicon) selain index.html, sajikan langsung
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteCond %{REQUEST_URI} !index\.html$ [NC]
     RewriteRule ^ - [L]
 
-    # Teruskan request lain ke index.php
+    # Teruskan semua request routing ke index.php
     RewriteRule ^(.*)$ index.php [L,QSA]
 </IfModule>

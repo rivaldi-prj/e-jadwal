@@ -10,7 +10,19 @@ $distIndex = __DIR__ . '/dist/index.html';
 
 if (file_exists($distIndex)) {
     header('Content-Type: text/html; charset=utf-8');
-    readfile($distIndex);
+
+    // Deteksi otomatis URL akses: Virtual Host (e-jadwal.test) vs Subdirectory (localhost/e-jadwal)
+    $scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
+    $content = file_get_contents($distIndex);
+
+    if (!empty($scriptDir) && $scriptDir !== '/') {
+        // Jika diakses melalui subfolder (misal http://localhost/e-jadwal/)
+        $content = str_replace('href="/assets/', 'href="' . $scriptDir . '/assets/', $content);
+        $content = str_replace('src="/assets/', 'src="' . $scriptDir . '/assets/', $content);
+        $content = str_replace('href="/logo-fikes-unbrah.png"', 'href="' . $scriptDir . '/logo-fikes-unbrah.png"', $content);
+    }
+
+    echo $content;
     exit;
 } else {
     header('Content-Type: text/html; charset=utf-8');

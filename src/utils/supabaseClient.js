@@ -107,7 +107,9 @@ export function getSupabaseClient() {
   try {
     supabaseInstance = createClient(config.url, config.anonKey, {
       auth: {
-        persistSession: false,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
       },
       realtime: {
         params: {

@@ -25,7 +25,7 @@ Sistem penjadwalan terpadu berbasis web untuk memantau, mengelola, dan mendistri
   { "label": "10.00 - 11.40", "startH": 10, "startM": 0, "endH": 11, "endM": 40 },
   { "label": "13.30 - 15.10", "startH": 13, "startM": 30, "endH": 15, "endM": 10 },
   { "label": "16.00 - 17.40", "startH": 16, "startM": 0, "endH": 17, "endM": 40 },
-  { "label": "17.00 - 18.40", "startH": 17, "startM": 0, "endH": 18, "endM": 40 },
+  { "label": "17.40 - 18.40", "startH": 17, "startM": 40, "endH": 18, "endM": 40 },
   { "label": "19.00 - 20.40", "startH": 19, "startM": 0, "endH": 20, "endM": 40 }
 ]
 ```

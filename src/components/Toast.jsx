@@ -27,7 +27,7 @@ export function Toast({ toast, onClose }) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-bounce-in transition-all">
+    <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-toast-pop transition-all">
       <div className={`p-4 rounded-xl shadow-2xl border flex items-start gap-3 ${bgStyles[toast.type || 'info']} relative overflow-hidden`}>
         {icons[toast.type || 'info']}
         <div className="flex-1 pr-6">

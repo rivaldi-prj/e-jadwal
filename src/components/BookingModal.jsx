@@ -15,8 +15,26 @@ import {
   Search,
   ChevronDown,
   Check,
+  Info,
+  Video,
 } from 'lucide-react';
-import { TIME_SLOTS, DAYS_OF_WEEK, BATCHES } from '../constants/scheduleConfig';
+import { TIME_SLOTS, DAYS_OF_WEEK, BATCHES, BOOKING_STATUS } from '../constants/scheduleConfig';
+
+// Helper: returns slot labels that overlap (partially or fully) with the given slot label
+function getOverlappingSlotLabels(selectedLabel) {
+  const sel = TIME_SLOTS.find(s => s.label === selectedLabel);
+  if (!sel) return [];
+  const selStart = sel.startH * 60 + sel.startM;
+  const selEnd   = sel.endH   * 60 + sel.endM;
+  return TIME_SLOTS
+    .filter(s => {
+      if (s.label === selectedLabel) return false;
+      const sStart = s.startH * 60 + s.startM;
+      const sEnd   = s.endH   * 60 + s.endM;
+      return selStart < sEnd && selEnd > sStart;
+    })
+    .map(s => s.label);
+}
 import { DOSEN_NAMES, MATA_KULIAH_LIST, getCoursesByDosen, getDosenByCourse } from '../constants/academicData';
 import { showConfirmDialog } from '../utils/sweetalert';
 
@@ -26,11 +44,14 @@ export function BookingModal({
   initialData, // { day, slot, booking }
   onSave,
   onDelete,
+  onApprove,
+  onReject,
   checkCollision,
   getLecturerAvailability,
   bookings = [],
 }) {
   const isEditing = Boolean(initialData?.booking);
+  const isPendingBooking = (initialData?.booking?.status || BOOKING_STATUS.APPROVED) === BOOKING_STATUS.PENDING;
 
   const [formData, setFormData] = useState({
     day: DAYS_OF_WEEK[0],
@@ -38,9 +59,31 @@ export function BookingModal({
     batch: '2024',
     note: '',
     pic: '',
+    room: 'zoom',
   });
 
   const [collisionResult, setCollisionResult] = useState(null);
+
+  const handleApprove = async () => {
+    if (onApprove && initialData?.booking?.id) {
+      await onApprove(initialData.booking.id, formData.room);
+      onClose();
+    }
+  };
+
+  const handleReject = async () => {
+    if (onReject && initialData?.booking?.id) {
+      const confirmed = await showConfirmDialog({
+        title: 'Tolak Permintaan?',
+        text: 'Apakah Anda yakin ingin menolak pengajuan jadwal perkuliahan ini?',
+        confirmButtonText: 'Ya, Tolak',
+      });
+      if (confirmed) {
+        await onReject(initialData.booking.id, 'Ditolak oleh admin');
+        onClose();
+      }
+    }
+  };
   const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
   const [courseSearchQuery, setCourseSearchQuery] = useState('');
   const courseDropdownRef = useRef(null);
@@ -71,24 +114,48 @@ export function BookingModal({
   useEffect(() => {
     if (initialData) {
       if (initialData.booking) {
+        let initialRoom = initialData.booking.room || 'zoom';
+        if (initialRoom === 'zoom' && checkCollision) {
+          const testZoom = checkCollision({ ...initialData.booking, room: 'zoom' });
+          if (testZoom.hasCollision && testZoom.type === 'ROOM_CONFLICT') {
+            const testMeet = checkCollision({ ...initialData.booking, room: 'gmeet' });
+            if (!testMeet.hasCollision) {
+              initialRoom = 'gmeet';
+            }
+          }
+        }
         setFormData({
           day: initialData.booking.day,
           timeSlot: initialData.booking.timeSlot,
           batch: initialData.booking.batch,
           note: initialData.booking.note || '',
           pic: initialData.booking.pic || '',
+          room: initialRoom,
         });
       } else {
+        const targetDay = initialData.day || DAYS_OF_WEEK[0];
+        const targetSlot = initialData.slot?.label || TIME_SLOTS[0].label;
+        let initialRoom = 'zoom';
+        if (checkCollision) {
+          const testZoom = checkCollision({ day: targetDay, timeSlot: targetSlot, room: 'zoom', batch: '2024' });
+          if (testZoom.hasCollision && testZoom.type === 'ROOM_CONFLICT') {
+            const testMeet = checkCollision({ day: targetDay, timeSlot: targetSlot, room: 'gmeet', batch: '2024' });
+            if (!testMeet.hasCollision) {
+              initialRoom = 'gmeet';
+            }
+          }
+        }
         setFormData({
-          day: initialData.day || DAYS_OF_WEEK[0],
-          timeSlot: initialData.slot?.label || TIME_SLOTS[0].label,
+          day: targetDay,
+          timeSlot: targetSlot,
           batch: '2024',
           note: '',
           pic: '',
+          room: initialRoom,
         });
       }
     }
-  }, [initialData]);
+  }, [initialData, checkCollision]);
 
   // Check collision reactively whenever any relevant field changes
   useEffect(() => {
@@ -103,7 +170,7 @@ export function BookingModal({
     } else {
       setCollisionResult(null);
     }
-  }, [formData.day, formData.timeSlot, formData.batch, formData.pic, formData.note, isOpen, initialData, checkCollision]);
+  }, [formData.day, formData.timeSlot, formData.batch, formData.pic, formData.note, formData.room, isOpen, initialData, checkCollision]);
 
   if (!isOpen) return null;
 
@@ -185,7 +252,7 @@ export function BookingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-lg max-h-[92vh] flex flex-col bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden transform transition-all">
+      <div className="w-full max-w-lg max-h-[92vh] flex flex-col bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden transform transition-all animate-modal-pop">
         {/* Header */}
         <div className="px-5 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/40 flex-shrink-0">
           <div>
@@ -206,17 +273,68 @@ export function BookingModal({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
-          {/* Top Collision Alert Banner (Room / Batch Conflict) */}
+          {/* Pending Request Alert Banner */}
+          {isPendingBooking && (
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs">
+              <div className="flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-amber-800 dark:text-amber-300">
+                      Pengajuan Menunggu Persetujuan
+                    </span>
+                    <span className="text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-200 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200">
+                      Pending
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] mt-1 text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                    Diajukan oleh: <strong className="text-zinc-900 dark:text-zinc-200">{initialData?.booking?.requestedBy || 'Pengunjung Publik'}</strong>
+                    {initialData?.booking?.requesterEmail && (
+                      <span> (<a href={`mailto:${initialData.booking.requesterEmail}`} className="underline text-amber-800 dark:text-amber-300 font-medium" title="Kirim email ke mahasiswa">{initialData.booking.requesterEmail}</a>)</span>
+                    )}
+                    {initialData?.booking?.requestedAt && (
+                      <span> pada {new Date(initialData.booking.requestedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })} WIB</span>
+                    )}.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Top Collision Alert Banner (Room / Batch / Room Overlap Conflict) */}
           {collisionResult && collisionResult.type !== 'DOSEN_CONFLICT' && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-rose-700 dark:text-rose-300">
               <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-              <div className="text-xs leading-relaxed">
+              <div className="text-xs leading-relaxed space-y-1">
                 <strong className="block font-semibold">
                   {collisionResult.type === 'BATCH_CONFLICT'
-                    ? 'Peringatan Bentrok Jadwal Angkatan'
-                    : 'Peringatan Ruang Zoom Terpakai'}
+                    ? 'Peringatan: Bentrok Jadwal Angkatan'
+                    : 'Peringatan: Ruang Zoom Sudah Terpakai'}
                 </strong>
-                {collisionResult.message}
+                <p>{collisionResult.message}</p>
+                {collisionResult.type === 'ROOM_CONFLICT' && (() => {
+                  const overlapLabels = getOverlappingSlotLabels(formData.timeSlot);
+                  const conflictSlot = collisionResult.existing?.timeSlot;
+                  const isOverlapCase = conflictSlot && overlapLabels.includes(conflictSlot);
+                  return isOverlapCase ? (
+                    <p className="text-[11px] text-rose-600/80 dark:text-rose-400/80 border-t border-rose-300/30 pt-1 mt-1">
+                      ⚠️ Waktu perkuliahan <strong>{formData.timeSlot}</strong> dan <strong>{conflictSlot}</strong> memiliki jeda waktu yang 
+                      tumpang tindih — keduanya tidak bisa digunakan bersamaan pada akun Zoom yang sama.
+                    </p>
+                  ) : null;
+                })()}
+                {collisionResult.type === 'ROOM_CONFLICT' && formData.room === 'zoom' && (
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, room: 'gmeet' }))}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      Alihkan ke Google Meet (Tersedia)
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -244,7 +362,7 @@ export function BookingModal({
             <div>
               <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                Slot Waktu Baku
+                Jam Kuliah
               </label>
               <select
                 value={formData.timeSlot}
@@ -260,13 +378,46 @@ export function BookingModal({
             </div>
           </div>
 
+          {/* Virtual Room Selector (Zoom vs Google Meet) */}
+          <div>
+            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
+              <Video className="w-3.5 h-3.5 text-zinc-400" />
+              Ruang Perkuliahan Virtual
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, room: 'zoom' })}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  formData.room !== 'gmeet'
+                    ? 'border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 ring-2 ring-sky-500/30 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <span>Zoom</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, room: 'gmeet' })}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  formData.room === 'gmeet'
+                    ? 'border-teal-500 bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 ring-2 ring-teal-500/30 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <Video className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span>Google Meet</span>
+              </button>
+            </div>
+          </div>
+
           {/* Batch Selector */}
           <div>
             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
               <Layers className="w-3.5 h-3.5 text-zinc-400" />
-              Angkatan Pengguna Zoom
+              Angkatan Mahasiswa
             </label>
-            <div className="grid grid-cols-5 gap-1.5">
+            <div className="grid grid-cols-4 gap-1.5">
               {BATCHES.map((b) => {
                 const isSelected = formData.batch === b.id;
                 return (
@@ -340,7 +491,7 @@ export function BookingModal({
 
             {/* Search & Option Popover Menu */}
             {isCourseDropdownOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden animate-fade-in">
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden animate-dropdown-pop">
                 {/* Search Bar Input */}
                 <div className="p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
                   <div className="relative">
@@ -540,7 +691,7 @@ export function BookingModal({
                 ) : (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
-                    <span>Dosen berstatus <strong>Tersedia</strong> pada slot {formData.day}, {formData.timeSlot} WIB</span>
+                    <span>Dosen berstatus <strong>Tersedia</strong> pada {formData.day}, pukul {formData.timeSlot} WIB</span>
                   </div>
                 )}
               </div>
@@ -570,6 +721,28 @@ export function BookingModal({
               >
                 Batal
               </button>
+
+              {isPendingBooking && onReject && (
+                <button
+                  type="button"
+                  onClick={handleReject}
+                  className="px-3 py-2 rounded-xl text-xs font-medium text-rose-700 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-300 dark:hover:bg-rose-900/40 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
+                >
+                  Tolak
+                </button>
+              )}
+
+              {isPendingBooking && onApprove && (
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:hover:bg-emerald-900/50 border border-emerald-300 dark:border-emerald-700 transition-colors shadow-2xs cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Setujui</span>
+                </button>
+              )}
+
               <button
                 type="submit"
                 disabled={Boolean(collisionResult)}

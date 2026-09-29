@@ -3,32 +3,42 @@
 @tailwind utilities;
 
 @layer base {
+  html,
   body {
-    @apply antialiased selection:bg-indigo-500 selection:text-white;
+    overflow-x: hidden;
   }
+  body {
+    @apply antialiased selection:bg-[#0D4F6C] selection:text-white;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Glassmorphism effects */
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .dark .glass-card {
-  background: rgba(9, 9, 11, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(9, 9, 11, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 /* Subtle ring indicator for Live status */
 @keyframes subtlePulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
 .live-indicator-dot {
@@ -36,43 +46,19 @@
 }
 
 /* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #e4e4e7;
-  border-radius: 9999px;
-}
-.dark ::-webkit-scrollbar-thumb {
-  background: #27272a;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #d4d4d8;
-}
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
-}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 9999px; }
+.dark ::-webkit-scrollbar-thumb { background: #27272a; }
+::-webkit-scrollbar-thumb:hover { background: #c4c4c7; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
 
 /* Print Optimization */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
-  }
-  .no-print {
-    display: none !important;
-  }
-  .print-only {
-    display: block !important;
-  }
-  .schedule-table {
-    box-shadow: none !important;
-    border: 1px solid #71717a !important;
-  }
+  body { background: white !important; color: black !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .schedule-table { box-shadow: none !important; border: 1px solid #71717a !important; }
 }
 
 /* SweetAlert2 Theme Customization */
@@ -80,7 +66,7 @@
   font-family: 'Plus Jakarta Sans', sans-serif !important;
   border-radius: 1rem !important;
   border: 1px solid rgba(228, 228, 231, 0.9) !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.18) !important;
   padding: 1.5rem !important;
 }
 
@@ -88,14 +74,20 @@
   background: #09090b !important;
   color: #f4f4f5 !important;
   border: 1px solid #27272a !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Pastikan SweetAlert container tidak pernah menambahkan blur yang menutupi tabel/layar */
+.swal2-container {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .swal2-popup.swal2-custom-toast {
   font-family: 'Plus Jakarta Sans', sans-serif !important;
-  border-radius: 0.875rem !important;
+  border-radius: 0.75rem !important;
   border: 1px solid rgba(228, 228, 231, 0.8) !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.1) !important;
   padding: 0.75rem 1rem !important;
 }
 
@@ -103,23 +95,158 @@
   background: #09090b !important;
   color: #f4f4f5 !important;
   border: 1px solid #27272a !important;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.5) !important;
 }
 
-.swal2-title {
-  font-size: 1.05rem !important;
-  font-weight: 700 !important;
+.swal2-popup.swal2-custom-toast .swal2-close {
+  font-size: 1.15rem !important;
+  color: #94a3b8 !important;
+  top: 0.35rem !important;
+  right: 0.35rem !important;
+  width: 1.4rem !important;
+  height: 1.4rem !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.swal2-popup.swal2-custom-toast .swal2-close:hover {
+  color: #0f172a !important;
+}
+.dark .swal2-popup.swal2-custom-toast .swal2-close:hover {
+  color: #f8fafc !important;
 }
 
-.swal2-html-container {
-  font-size: 0.825rem !important;
-  line-height: 1.5 !important;
-}
-
-.swal2-btn-confirm,
-.swal2-btn-cancel {
+.swal2-title { font-size: 1.05rem !important; font-weight: 700 !important; }
+.swal2-html-container { font-size: 0.825rem !important; line-height: 1.5 !important; }
+.swal2-btn-confirm, .swal2-btn-cancel {
   border-radius: 0.5rem !important;
   font-size: 0.8125rem !important;
   font-weight: 600 !important;
   padding: 0.5rem 1.25rem !important;
+  transition: all 0.15s ease-in-out !important;
 }
+
+/* === Modal, Pop-up & Dropdown Animations === */
+
+/* 1. Backdrop Fade In with Blur */
+@keyframes modalBackdropIn {
+  0% {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+}
+
+.animate-backdrop-in,
+.animate-fade-in {
+  animation: modalBackdropIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, backdrop-filter;
+}
+
+/* 2. Modal Box Pop Entrance (Fluid spring scale & rise) */
+@keyframes modalPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.93) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-pop,
+.animate-modal-card {
+  animation: modalPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 3. Dropdown & Suggestion Menu Entrance */
+@keyframes dropdownPopIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-dropdown-pop {
+  animation: dropdownPopIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top center;
+  will-change: transform, opacity;
+}
+
+/* 4. Toast Notification Slide In */
+@keyframes toastSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(36px) scale(0.94);
+  }
+  70% {
+    transform: translateX(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-toast-pop,
+.animate-bounce-in {
+  animation: toastSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* === Page Entrance === */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* === Gentle floating (login illustration) === */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+.animate-float-slow {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+/* === Subtle Error Shake === */
+@keyframes shakeSubtle {
+  0%, 100% { transform: translateX(0); }
+  20%, 60%  { transform: translateX(-4px); }
+  40%, 80%  { transform: translateX(4px); }
+}
+.animate-shake-subtle {
+  animation: shakeSubtle 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* === Dot grid pattern for login panel === */
+.dot-grid-pattern {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.12) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* === Live Tracker & Schedule Micro-Animations === */
+
+/* Respect prefers-reduced-motion: disable animations and smooth scroll */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

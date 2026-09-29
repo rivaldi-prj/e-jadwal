@@ -11,8 +11,33 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     batch TEXT NOT NULL,
     note TEXT NOT NULL,
     pic TEXT DEFAULT '',
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    -- === FITUR STATUS BOOKING (v2) ===
+    status TEXT DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
+    requested_by TEXT DEFAULT '',
+    requester_email TEXT DEFAULT '',
+    requested_at TIMESTAMP WITH TIME ZONE,
+    approved_at TIMESTAMP WITH TIME ZONE,
+    reject_reason TEXT DEFAULT ''
 );
+
+-- Migrasi: tambah kolom status, email, dan room (aman dijalankan berkali-kali)
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected'));
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS requested_by TEXT DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS requester_email TEXT DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS requested_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP WITH TIME ZONE;
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS reject_reason TEXT DEFAULT '';
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS room TEXT DEFAULT 'zoom';
+
+-- Set semua booking lama (tanpa status) menjadi 'approved'
+UPDATE public.bookings SET status = 'approved' WHERE status IS NULL;
+UPDATE public.bookings SET room = 'zoom' WHERE room IS NULL;
+
+-- Penegakan Aturan di Database: Cegah dua jadwal/pengajuan aktif memakai ruang (Zoom/Google Meet) pada hari & jam yang sama
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_booking_slot_room 
+ON public.bookings (day, time_slot, room) 
+WHERE status != 'rejected';
 
 -- 2. Buat Tabel Konfigurasi Akun Zoom (zoom_config)
 CREATE TABLE IF NOT EXISTS public.zoom_config (
@@ -21,19 +46,22 @@ CREATE TABLE IF NOT EXISTS public.zoom_config (
     join_url TEXT NOT NULL,
     meeting_id TEXT NOT NULL,
     passcode TEXT NOT NULL,
+    gmeet_url TEXT DEFAULT 'https://meet.google.com/kqe-reho-vbd',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+ALTER TABLE public.zoom_config ADD COLUMN IF NOT EXISTS gmeet_url TEXT DEFAULT 'https://meet.google.com/kqe-reho-vbd';
 
 -- Masukkan Konfigurasi Akun Zoom Bawaan S1 Kebidanan
-INSERT INTO public.zoom_config (id, name, join_url, meeting_id, passcode)
+INSERT INTO public.zoom_config (id, name, join_url, meeting_id, passcode, gmeet_url)
 VALUES (
     1,
     'ZOOM KEBIDANAN',
     'https://zoom.us/j/91053222846?pwd=IVBzhDahrYwKkOZtl80RS88eZH1JzE.1',
     '910 5322 2846',
-    '433452'
+    '433452',
+    'https://meet.google.com/kqe-reho-vbd'
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE SET gmeet_url = EXCLUDED.gmeet_url WHERE public.zoom_config.gmeet_url IS NULL;
 
 -- 3. Aktifkan Keamanan Row Level Security (RLS)
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;

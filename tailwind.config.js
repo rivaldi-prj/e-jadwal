@@ -9,13 +9,6 @@ export default {
     extend: {
       colors: {
         batch: {
-          2022: {
-            light: '#fef3c7',
-            border: '#f59e0b',
-            text: '#b45309',
-            badge: '#d97706',
-            glow: 'rgba(245, 158, 11, 0.25)',
-          },
           2023: {
             light: '#e0f2fe',
             border: '#0ea5e9',
@@ -46,9 +39,32 @@ export default {
           },
         }
       },
+      keyframes: {
+        modalBackdropIn: {
+          '0%': { opacity: '0', backdropFilter: 'blur(0px)' },
+          '100%': { opacity: '1', backdropFilter: 'blur(6px)' },
+        },
+        modalPopIn: {
+          '0%': { opacity: '0', transform: 'scale(0.94) translateY(14px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
+        dropdownPopIn: {
+          '0%': { opacity: '0', transform: 'scaleY(0.92) translateY(-6px)' },
+          '100%': { opacity: '1', transform: 'scaleY(1) translateY(0)' },
+        },
+        toastSlideIn: {
+          '0%': { opacity: '0', transform: 'translateX(30px) scale(0.95)' },
+          '70%': { transform: 'translateX(-4px) scale(1.01)' },
+          '100%': { opacity: '1', transform: 'translateX(0) scale(1)' },
+        },
+      },
       animation: {
         'pulse-subtle': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+        'backdrop-in': 'modalBackdropIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'modal-pop': 'modalPopIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'dropdown-pop': 'dropdownPopIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'toast-pop': 'toastSlideIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards',
       }
     },
   },

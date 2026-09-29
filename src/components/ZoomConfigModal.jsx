@@ -16,6 +16,14 @@ import {
   Check,
   ExternalLink,
   Sparkles,
+  Mail,
+  Send,
+  Zap,
+  Eye,
+  EyeOff,
+  Layers,
+  ShieldCheck,
+  Bell,
 } from 'lucide-react';
 import { showConfirmDialog } from '../utils/sweetalert';
 import {
@@ -27,6 +35,7 @@ import {
   cleanSupabaseKey,
 } from '../utils/supabaseClient';
 import { copyToClipboard } from '../utils/clipboard';
+import { getEmailConfig, saveEmailConfig, sendTestEmail } from '../utils/emailService';
 
 const SQL_SCHEMA = `-- 1. Buat Tabel Jadwal (bookings)
 CREATE TABLE IF NOT EXISTS public.bookings (
@@ -36,21 +45,28 @@ CREATE TABLE IF NOT EXISTS public.bookings (
     batch TEXT NOT NULL,
     note TEXT NOT NULL,
     pic TEXT DEFAULT '',
+    room TEXT DEFAULT 'zoom',
+    status TEXT DEFAULT 'APPROVED',
+    requested_by TEXT DEFAULT '',
+    user_email TEXT DEFAULT '',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS room TEXT DEFAULT 'zoom';
 
--- 2. Buat Tabel Akun Zoom (zoom_config)
+-- 2. Buat Tabel Akun Zoom & Meet (zoom_config)
 CREATE TABLE IF NOT EXISTS public.zoom_config (
     id INT PRIMARY KEY DEFAULT 1,
     name TEXT DEFAULT 'ZOOM KEBIDANAN',
     join_url TEXT NOT NULL,
     meeting_id TEXT NOT NULL,
     passcode TEXT NOT NULL,
+    gmeet_url TEXT DEFAULT 'https://meet.google.com/kqe-reho-vbd',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+ALTER TABLE public.zoom_config ADD COLUMN IF NOT EXISTS gmeet_url TEXT DEFAULT 'https://meet.google.com/kqe-reho-vbd';
 
-INSERT INTO public.zoom_config (id, name, join_url, meeting_id, passcode)
-VALUES (1, 'ZOOM KEBIDANAN', 'https://zoom.us/j/91053222846?pwd=IVBzhDahrYwKkOZtl80RS88eZH1JzE.1', '910 5322 2846', '433452')
+INSERT INTO public.zoom_config (id, name, join_url, meeting_id, passcode, gmeet_url)
+VALUES (1, 'ZOOM KEBIDANAN', 'https://zoom.us/j/91053222846?pwd=IVBzhDahrYwKkOZtl80RS88eZH1JzE.1', '910 5322 2846', '433452', 'https://meet.google.com/kqe-reho-vbd')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Aktifkan RLS & Kebijakan
@@ -66,7 +82,12 @@ CREATE POLICY "Public Insert Zoom Config" ON public.zoom_config FOR INSERT WITH 
 
 -- 4. Aktifkan Realtime Sync
 ALTER PUBLICATION supabase_realtime ADD TABLE public.bookings;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.zoom_config;`;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.zoom_config;
+
+-- 5. Cegah bentrok slot pada platform yang sama di tingkat database
+CREATE UNIQUE INDEX IF NOT EXISTS unique_active_booking_slot_room 
+ON public.bookings (day, time_slot, room) 
+WHERE status != 'rejected';`;
 
 export function ZoomConfigModal({
   isOpen,
@@ -90,6 +111,7 @@ export function ZoomConfigModal({
     joinUrl: zoomConfig.joinUrl || '',
     meetingId: zoomConfig.meetingId || '',
     passcode: zoomConfig.passcode || '',
+    gmeetUrl: zoomConfig.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd',
   });
 
   const [supabaseForm, setSupabaseForm] = useState(() => {
@@ -108,7 +130,65 @@ export function ZoomConfigModal({
   const [confirmPin, setConfirmPin] = useState('');
   const [pinMessage, setPinMessage] = useState(null);
 
+  // Email Notification configuration state
+  const [emailForm, setEmailForm] = useState(() => getEmailConfig());
+  const [testEmailAddress, setTestEmailAddress] = useState('');
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [showBrevoKey, setShowBrevoKey] = useState(false);
+
   if (!isOpen) return null;
+
+  const handleSaveEmailConfig = (e) => {
+    e.preventDefault();
+    if (!isAdmin) {
+      onShowToast({
+        type: 'warning',
+        title: 'Akses Ditolak',
+        message: 'Silakan login sebagai Mode Pengelola untuk menyimpan konfigurasi email.',
+      });
+      return;
+    }
+    saveEmailConfig(emailForm);
+    onShowToast({
+      type: 'success',
+      title: 'Konfigurasi Email Disimpan',
+      message: 'Pengaturan notifikasi email otomatis (Brevo & EmailJS) berhasil diperbarui.',
+    });
+  };
+
+  const handleSendTest = async () => {
+    if (!testEmailAddress.trim()) {
+      onShowToast({
+        type: 'warning',
+        title: 'Email Tujuan Kosong',
+        message: 'Masukkan alamat email tujuan uji coba terlebih dahulu.',
+      });
+      return;
+    }
+    setIsSendingTest(true);
+    try {
+      const res = await sendTestEmail(testEmailAddress.trim());
+      const providerLabel = res?.provider === 'brevo'
+        ? 'Brevo (Utama - 300/hari)'
+        : res?.fallbackUsed
+          ? 'EmailJS (Cadangan Failover)'
+          : 'EmailJS';
+
+      onShowToast({
+        type: 'success',
+        title: 'Email Uji Coba Terkirim!',
+        message: `Email notifikasi uji coba berhasil dikirim ke ${testEmailAddress} via ${providerLabel}. Silakan cek kotak masuk atau folder spam Anda.`,
+      });
+    } catch (err) {
+      onShowToast({
+        type: 'error',
+        title: 'Gagal Mengirim Email',
+        message: err?.text || err?.message || 'Periksa kembali API Key Brevo atau kredensial EmailJS Anda.',
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
 
   const handleSaveZoomConfig = (e) => {
     e.preventDefault();
@@ -311,7 +391,7 @@ export function ZoomConfigModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-lg bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden transform transition-all">
+      <div className="w-full max-w-lg bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden transform transition-all animate-modal-pop">
         {/* Header */}
         <div className="px-5 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/40">
           <div className="flex items-center gap-2">
@@ -338,7 +418,7 @@ export function ZoomConfigModal({
                 : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
             }`}
           >
-            Akun Zoom
+            Ruang Virtual (Zoom & Meet)
           </button>
           <button
             onClick={() => setActiveTab('database')}
@@ -361,6 +441,18 @@ export function ZoomConfigModal({
             }`}
           >
             PIN Pengelola
+          </button>
+          <button
+            onClick={() => setActiveTab('email')}
+            className={`flex-1 py-2.5 px-3 text-center transition-colors border-b-2 whitespace-nowrap flex items-center justify-center gap-1.5 ${
+              activeTab === 'email'
+                ? 'border-zinc-900 text-zinc-900 dark:border-zinc-100 dark:text-zinc-100 bg-white dark:bg-zinc-950 font-semibold'
+                : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
+            }`}
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>Email Notifikasi</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${emailForm.enabled && (emailForm.brevoApiKey || emailForm.serviceId) ? 'bg-emerald-500' : 'bg-zinc-400'}`}></span>
           </button>
           <button
             onClick={() => setActiveTab('data')}
@@ -443,6 +535,43 @@ export function ZoomConfigModal({
                 </div>
               </div>
 
+              <div className="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Video className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <label className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                    Tautan Google Meet
+                  </label>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                    Google Meet
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2 leading-relaxed">
+                  Tautan ini otomatis diberikan kepada mahasiswa ketika ruang Zoom pada jam tersebut sudah terisi oleh perkuliahan lain.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    disabled={!isAdmin}
+                    required
+                    placeholder="https://meet.google.com/..."
+                    value={configForm.gmeetUrl}
+                    onChange={(e) => setConfigForm({ ...configForm, gmeetUrl: e.target.value })}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 disabled:opacity-60 focus:ring-1 focus:ring-teal-500 focus:outline-none transition-colors font-mono"
+                  />
+                  {configForm.gmeetUrl && (
+                    <a
+                      href={configForm.gmeetUrl.startsWith('http') ? configForm.gmeetUrl : `https://${configForm.gmeetUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                      title="Buka link Meet"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
               {isAdmin && (
                 <div className="pt-2">
                   <button
@@ -450,7 +579,7 @@ export function ZoomConfigModal({
                     className="w-full flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white shadow-2xs transition-colors"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Simpan Pengaturan Zoom</span>
+                    <span>Simpan Pengaturan Virtual Room</span>
                   </button>
                 </div>
               )}
@@ -749,6 +878,413 @@ export function ZoomConfigModal({
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB 5: EMAIL NOTIFICATION CONFIG (BREVO + EMAILJS DUAL PROVIDER) */}
+          {activeTab === 'email' && (
+            <div className="space-y-4">
+              {/* Master Toggle */}
+              <div className="flex items-start justify-between gap-3 p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40">
+                <div className="flex items-start gap-2.5">
+                  <Mail className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <span className="font-semibold text-xs text-zinc-900 dark:text-zinc-100 block">
+                      Notifikasi Email Otomatis Mahasiswa
+                    </span>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-normal mt-0.5">
+                      Kirim email otomatis saat mahasiswa <strong>Mengajukan</strong> jadwal, saat <strong>Disetujui</strong> (memuat akses Link Zoom), atau saat <strong>Ditolak</strong> (memuat alasan).
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={emailForm.enabled}
+                    onChange={(e) => setEmailForm({ ...emailForm, enabled: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer dark:bg-zinc-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+
+              {/* Provider Strategy Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-800 dark:text-zinc-200 mb-2">
+                  Metode Pengiriman Email (Provider)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Option 1: Smart Failover (Brevo + EmailJS) */}
+                  <button
+                    type="button"
+                    onClick={() => setEmailForm({ ...emailForm, provider: 'smart' })}
+                    className={`p-3 rounded-xl border text-left transition-all relative ${
+                      emailForm.provider === 'smart' || !emailForm.provider
+                        ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/20 ring-1 ring-emerald-500/30'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded">
+                        Rekomendasi
+                      </span>
+                      <Zap className={`w-3.5 h-3.5 ${emailForm.provider === 'smart' ? 'text-emerald-600' : 'text-zinc-400'}`} />
+                    </div>
+                    <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                      Otomatis (Smart Failover)
+                    </div>
+                    <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">
+                      Brevo utama (300/hari). Jika limit atau ada gangguan, otomatis dialihkan ke EmailJS.
+                    </p>
+                  </button>
+
+                  {/* Option 2: Brevo Only */}
+                  <button
+                    type="button"
+                    onClick={() => setEmailForm({ ...emailForm, provider: 'brevo' })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      emailForm.provider === 'brevo'
+                        ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/20 ring-1 ring-indigo-500/30'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/50 px-1.5 py-0.5 rounded">
+                        300 / Hari
+                      </span>
+                      <Sparkles className={`w-3.5 h-3.5 ${emailForm.provider === 'brevo' ? 'text-indigo-600' : 'text-zinc-400'}`} />
+                    </div>
+                    <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                      Hanya Brevo
+                    </div>
+                    <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">
+                      REST API langsung (9.000 email/bln). Desain HTML resmi otomatis tanpa setting manual.
+                    </p>
+                  </button>
+
+                  {/* Option 3: EmailJS Only */}
+                  <button
+                    type="button"
+                    onClick={() => setEmailForm({ ...emailForm, provider: 'emailjs' })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      emailForm.provider === 'emailjs'
+                        ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/20 ring-1 ring-amber-500/30'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 hover:border-zinc-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded">
+                        200 / Bulan
+                      </span>
+                      <Mail className={`w-3.5 h-3.5 ${emailForm.provider === 'emailjs' ? 'text-amber-600' : 'text-zinc-400'}`} />
+                    </div>
+                    <div className="font-semibold text-xs text-zinc-900 dark:text-zinc-100">
+                      Hanya EmailJS
+                    </div>
+                    <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">
+                      Kirim melalui EmailJS Browser SDK dengan Template ID yang dibuat di dashboard EmailJS.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveEmailConfig} className="space-y-4">
+                {/* 0. SECTION OPERATOR ALERT NOTIFICATION (HP OPERATOR) */}
+                <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/20 dark:bg-amber-950/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px]">
+                        <Bell className="w-3 h-3" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
+                          Notifikasi Instan ke HP Operator Prodi
+                        </span>
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                          Kirim peringatan email langsung ke HP pengelola saat ada mahasiswa mengajukan jadwal
+                        </span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[10.5px] font-medium px-2 py-0.5 rounded-full ${
+                        emailForm.operatorEmail
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                      }`}
+                    >
+                      {emailForm.operatorEmail ? 'Aktif' : 'Belum Diisi'}
+                    </span>
+                  </div>
+
+                  <div className="pt-1">
+                    <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Email Penerima Operator (HP)
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="contoh: operator@gmail.com"
+                      value={emailForm.operatorEmail || ''}
+                      onChange={(e) => setEmailForm({ ...emailForm, operatorEmail: e.target.value.trim() })}
+                      className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                    />
+                    <span className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1.5 block leading-normal">
+                      Gunakan email yang terpasang di aplikasi Gmail HP Anda. Boleh menggunakan email yang sama dengan pengirim Brevo (<strong>s1kebidanan@fikes.unbrah.ac.id</strong>) atau email pribadi operator.
+                    </span>
+                  </div>
+                </div>
+
+                {/* 1. SECTION BREVO */}
+                {(emailForm.provider === 'smart' || emailForm.provider === 'brevo' || !emailForm.provider) && (
+                  <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/20 dark:bg-indigo-950/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-md bg-indigo-500 text-white flex items-center justify-center text-[10px] font-bold">
+                          B
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
+                            Pengaturan Brevo (Sendinblue)
+                          </span>
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                            Kuota gratis 300 email/hari &bull; Template HTML otomatis dari sistem
+                          </span>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10.5px] font-medium px-2 py-0.5 rounded-full ${
+                          emailForm.brevoApiKey && emailForm.brevoSenderEmail
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                        }`}
+                      >
+                        {emailForm.brevoApiKey && emailForm.brevoSenderEmail ? 'Siap Digunakan' : 'Belum Lengkap'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Brevo API Key (v3)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showBrevoKey ? 'text' : 'password'}
+                          placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          value={emailForm.brevoApiKey || ''}
+                          onChange={(e) => setEmailForm({ ...emailForm, brevoApiKey: e.target.value.trim() })}
+                          className="w-full text-xs pr-9 pl-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-indigo-400 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowBrevoKey(!showBrevoKey)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                        >
+                          {showBrevoKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                      <span className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 block">
+                        Dapatkan di menu <strong>SMTP &amp; API &rarr; API Keys</strong> pada dashboard Brevo.
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Email Pengirim (Sender Email)
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="email.anda@gmail.com"
+                          value={emailForm.brevoSenderEmail || ''}
+                          onChange={(e) => setEmailForm({ ...emailForm, brevoSenderEmail: e.target.value.trim() })}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-indigo-400 focus:outline-none"
+                        />
+                        <span className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 block">
+                          Wajib email yang telah terverifikasi sebagai <em>Sender</em> di akun Brevo.
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Nama Pengirim (Sender Name)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="E-Jadwal S1 Kebidanan UNBRAH"
+                          value={emailForm.brevoSenderName || ''}
+                          onChange={(e) => setEmailForm({ ...emailForm, brevoSenderName: e.target.value })}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-indigo-400 focus:outline-none"
+                        />
+                        <span className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1 block">
+                          Nama instansi/prodi yang tampil pada kotak masuk penerima.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. SECTION EMAILJS */}
+                {(emailForm.provider === 'smart' || emailForm.provider === 'emailjs' || !emailForm.provider) && (
+                  <div className="p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/20 dark:bg-amber-950/10 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold">
+                          E
+                        </div>
+                        <div>
+                          <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
+                            Pengaturan EmailJS
+                          </span>
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                            {emailForm.provider === 'smart'
+                              ? 'Sebagai cadangan otomatis (failover) saat Brevo limit/gangguan'
+                              : 'Layanan utama (200 email/bulan gratis)'}
+                          </span>
+                        </div>
+                      </div>
+                      <span
+                        className={`text-[10.5px] font-medium px-2 py-0.5 rounded-full ${
+                          emailForm.serviceId && emailForm.publicKey
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+                        }`}
+                      >
+                        {emailForm.serviceId && emailForm.publicKey ? 'Siap Digunakan' : 'Belum Lengkap'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Service ID (EmailJS)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="contoh: service_kebidanan"
+                        value={emailForm.serviceId || ''}
+                        onChange={(e) => setEmailForm({ ...emailForm, serviceId: e.target.value.trim() })}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Template ID Disetujui
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="contoh: template_approved"
+                          value={emailForm.templateApprovedId || ''}
+                          onChange={(e) => setEmailForm({ ...emailForm, templateApprovedId: e.target.value.trim() })}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                          Template ID Ditolak (Opsional)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="contoh: template_rejected"
+                          value={emailForm.templateRejectedId || ''}
+                          onChange={(e) => setEmailForm({ ...emailForm, templateRejectedId: e.target.value.trim() })}
+                          className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11.5px] font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                        Public Key (User ID EmailJS)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="contoh: user_xxxxxxxx atau public_key"
+                        value={emailForm.publicKey || ''}
+                        onChange={(e) => setEmailForm({ ...emailForm, publicKey: e.target.value.trim() })}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-mono focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-1">
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white shadow-2xs transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Simpan Pengaturan Email</span>
+                  </button>
+                </div>
+              </form>
+
+              {/* Uji Coba Pengiriman Email */}
+              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                    <Send className="w-3.5 h-3.5 text-zinc-500" />
+                    Uji Coba Pengiriman Email
+                  </span>
+                  <span className="text-[10px] text-zinc-500 font-medium">
+                    Mode Aktif: {emailForm.provider === 'smart' ? 'Smart Failover' : emailForm.provider === 'brevo' ? 'Brevo' : 'EmailJS'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Tes apakah kredensial pengiriman email sudah terhubung dengan benar ke kotak masuk Anda.
+                </p>
+                <div className="flex gap-2 pt-0.5">
+                  <input
+                    type="email"
+                    placeholder="Ketik email penerima uji coba..."
+                    value={testEmailAddress}
+                    onChange={(e) => setTestEmailAddress(e.target.value)}
+                    className="flex-1 text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                  />
+                  <button
+                    type="button"
+                    disabled={isSendingTest}
+                    onClick={handleSendTest}
+                    className="px-4 py-2 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white transition-colors disabled:opacity-50 flex items-center gap-1.5 flex-shrink-0"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isSendingTest ? 'animate-spin' : ''}`} />
+                    <span>{isSendingTest ? 'Mengirim...' : 'Kirim Test'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Panduan Singkat Setup Brevo & EmailJS */}
+              <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/20 space-y-2.5">
+                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  Panduan Cepat Setup Provider:
+                </span>
+
+                <div className="space-y-2 text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                  <div className="p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                    <strong className="text-indigo-950 dark:text-indigo-200 block mb-1">
+                      1. Brevo (Sangat Mudah - 300 email/hari gratis):
+                    </strong>
+                    <ol className="list-decimal pl-4 space-y-0.5">
+                      <li>Buka <a href="https://www.brevo.com" target="_blank" rel="noreferrer" className="underline font-medium text-indigo-700 dark:text-indigo-300">brevo.com</a> dan buat akun gratis.</li>
+                      <li>Di menu <strong>Profil &rarr; Senders, Domains &amp; Dedicated IPs &rarr; Senders</strong>, pastikan email Anda berstatus <em>Verified</em>. Masukkan email tersebut ke kolom <em>Sender Email</em> di atas.</li>
+                      <li>Buka menu <strong>SMTP &amp; API &rarr; API Keys</strong>, klik <strong>Generate a new API key</strong>, beri nama, lalu salin kodenya ke form <em>Brevo API Key</em>.</li>
+                      <li><em>Selesai!</em> Sistem otomatis merender template email resmi berlogo kampus tanpa perlu setting template di Brevo.</li>
+                    </ol>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <strong className="text-amber-950 dark:text-amber-200 block mb-1">
+                      2. EmailJS (Sebagai Cadangan Failover - 200 email/bulan gratis):
+                    </strong>
+                    <ol className="list-decimal pl-4 space-y-0.5">
+                      <li>Buka <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="underline font-medium text-amber-800 dark:text-amber-300">emailjs.com</a> dan hubungkan akun Gmail di menu <strong>Email Services</strong> (dapat <em>Service ID</em>).</li>
+                      <li>Di menu <strong>Email Templates</strong> buat template baru dengan variabel <code className="bg-amber-100 dark:bg-amber-950 px-1 rounded font-mono">{`{{to_name}}`}</code>, <code className="bg-amber-100 dark:bg-amber-950 px-1 rounded font-mono">{`{{course_name}}`}</code>, <code className="bg-amber-100 dark:bg-amber-950 px-1 rounded font-mono">{`{{zoom_meeting_id}}`}</code>, <code className="bg-amber-100 dark:bg-amber-950 px-1 rounded font-mono">{`{{zoom_passcode}}`}</code>.</li>
+                      <li>Salin <em>Public Key</em> dari menu <strong>Account</strong> ke form di atas.</li>
+                    </ol>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -4,12 +4,16 @@ import { ShieldCheck, Lock, X, KeyRound, AlertCircle } from 'lucide-react';
 export function AdminPinModal({ isOpen, onClose, onVerifyPin, onSuccess }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (onVerifyPin(pin)) {
+    setIsChecking(true);
+    const valid = await onVerifyPin(pin);
+    setIsChecking(false);
+    if (valid) {
       setError(false);
       setPin('');
       onSuccess();
@@ -22,7 +26,7 @@ export function AdminPinModal({ isOpen, onClose, onVerifyPin, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-      <div className="w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden transform transition-all">
+      <div className="w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden transform transition-all animate-modal-pop">
         {/* Header */}
         <div className="p-6 text-center border-b border-zinc-200/80 dark:border-zinc-800/80 relative bg-zinc-50/50 dark:bg-zinc-900/30">
           <button
@@ -59,7 +63,7 @@ export function AdminPinModal({ isOpen, onClose, onVerifyPin, onSuccess }) {
                 }}
                 className={`w-full text-center tracking-widest font-mono text-base font-bold pl-9 pr-4 py-2.5 rounded-xl border bg-zinc-50/80 dark:bg-zinc-900/80 text-zinc-900 dark:text-white focus:outline-none transition-all ${
                   error
-                    ? 'border-rose-500 ring-2 ring-rose-500/20'
+                    ? 'border-rose-500 ring-2 ring-rose-500/20 animate-shake-subtle'
                     : 'border-zinc-200 dark:border-zinc-800 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600'
                 }`}
               />
@@ -88,10 +92,13 @@ export function AdminPinModal({ isOpen, onClose, onVerifyPin, onSuccess }) {
             </button>
             <button
               type="submit"
-              disabled={!pin}
-              className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors"
+              disabled={!pin || isChecking}
+              className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs transition-colors flex items-center justify-center gap-1.5"
             >
-              Buka Akses
+              {isChecking
+                ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white dark:border-zinc-400/30 dark:border-t-zinc-700 rounded-full animate-spin" />Verifikasi...</>
+                : 'Buka Akses'
+              }
             </button>
           </div>
         </form>
