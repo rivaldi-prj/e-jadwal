@@ -18,12 +18,14 @@ import {
   ClipboardList,
   HelpCircle,
   Video,
+  CheckCheck,
 } from 'lucide-react';
 
 export function ScheduleMatrix({
   bookings,
   currentDay,
   activeSlot,
+  currentTotalMinutes = 0,
   isAdmin,
   onSelectCell,
   onShowDetail,
@@ -296,6 +298,9 @@ export function ScheduleMatrix({
                 {TIME_SLOTS.map((slot, index) => {
                   const isToday = agendaDay === currentDay;
                   const isCurrentTimeSlot = isToday && activeSlot?.label === slot.label;
+                  // Opsi C: slot hari ini yang jam-nya sudah berlalu
+                  const slotEndMin = slot.endH * 60 + slot.endM;
+                  const isPastSlot = isToday && currentTotalMinutes >= slotEndMin;
 
                   // Find bookings for this day and slot (respects visibility rules)
                   const rawBookings = visibleBookings.filter(
@@ -316,7 +321,9 @@ export function ScheduleMatrix({
                           : isCurrentTimeSlot && !hasBookings
                           ? 'border-emerald-300/80 bg-emerald-50/40 dark:bg-emerald-950/20 shadow-2xs'
                           : hasBookings
-                          ? 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 shadow-2xs hover:shadow-xs'
+                          ? `bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 shadow-2xs hover:shadow-xs ${isPastSlot ? 'opacity-60 grayscale-[15%]' : ''}`
+                          : isPastSlot
+                          ? 'border-zinc-200/40 dark:border-zinc-800/40 bg-zinc-100/40 dark:bg-zinc-900/20 opacity-40 cursor-not-allowed'
                           : 'border-slate-200/70 dark:border-zinc-800/70 bg-slate-50/60 dark:bg-zinc-900/30 border-dashed'
                       } p-3.5 sm:p-4`}
                     >
@@ -333,6 +340,12 @@ export function ScheduleMatrix({
                         </div>
 
                         <div className="flex items-center gap-1.5">
+                          {isPastSlot && !isLiveClass && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-200 dark:border-zinc-700">
+                              <CheckCheck className="w-3 h-3" />
+                              Selesai
+                            </span>
+                          )}
                           {isLiveClass && (
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-300 dark:border-rose-800">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
@@ -432,14 +445,21 @@ export function ScheduleMatrix({
                       ) : (
                         /* Empty Slot */
                         <div className="flex items-center justify-between py-1">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500/80"></span>
-                            <span className="text-xs text-slate-600 dark:text-zinc-400 font-medium">
-                              {isCurrentTimeSlot ? 'Ruang siap digunakan sekarang' : 'Ruang virtual tersedia'}
-                            </span>
-                          </div>
+                          {isPastSlot ? (
+                            <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-600">
+                              <CheckCheck className="w-3.5 h-3.5" />
+                              <span className="text-xs font-medium">Sesi sudah selesai hari ini</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500/80"></span>
+                              <span className="text-xs text-slate-600 dark:text-zinc-400 font-medium">
+                                {isCurrentTimeSlot ? 'Ruang siap digunakan sekarang' : 'Ruang virtual tersedia'}
+                              </span>
+                            </div>
+                          )}
 
-                          {isAdmin ? (
+                          {!isPastSlot && isAdmin && (
                             <button
                               type="button"
                               onClick={() => onSelectCell({ day: agendaDay, slot, booking: null })}
@@ -448,7 +468,8 @@ export function ScheduleMatrix({
                               <Plus className="w-3 h-3" />
                               <span>Jadwalkan</span>
                             </button>
-                          ) : onRequestSlot ? (
+                          )}
+                          {!isPastSlot && !isAdmin && onRequestSlot && (
                             <button
                               type="button"
                               onClick={() => onRequestSlot({ day: agendaDay, slot })}
@@ -457,7 +478,8 @@ export function ScheduleMatrix({
                               <Send className="w-3 h-3" />
                               <span>Ajukan</span>
                             </button>
-                          ) : (
+                          )}
+                          {!isPastSlot && !isAdmin && !onRequestSlot && (
                             <span className="text-xs text-slate-300 dark:text-zinc-700 font-mono">—</span>
                           )}
                         </div>
@@ -605,6 +627,7 @@ export function ScheduleMatrix({
                                   onSelectCell={onSelectCell}
                                   onShowDetail={onShowDetail}
                                   onRequestSlot={onRequestSlot}
+                                  currentTotalMinutes={currentTotalMinutes}
                                 />
                               </td>
                             );

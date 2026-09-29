@@ -1,12 +1,24 @@
 import React from 'react';
-import { Plus, Edit2, Clock, MoreHorizontal, Video } from 'lucide-react';
+import { Plus, Edit2, Clock, MoreHorizontal, Video, CheckCheck } from 'lucide-react';
 import { BATCHES, BOOKING_STATUS, getLecturerInitials } from '../constants/scheduleConfig';
+
+/**
+ * Returns true if this time slot has already ended TODAY.
+ * isToday must be true; uses currentTotalMinutes from the clock hook.
+ */
+function isSlotPastToday(slot, isToday, currentTotalMinutes) {
+  if (!isToday) return false;
+  const endMin = slot.endH * 60 + slot.endM;
+  return currentTotalMinutes >= endMin;
+}
+
 
 function BookingCard({
   booking,
   day,
   slot,
   isLiveNow,
+  isPast = false,
   isAdmin,
   onSelectCell,
   onShowDetail,
@@ -42,7 +54,7 @@ function BookingCard({
         title={`[MENUNGGU PERSETUJUAN]\n${booking.note || 'Perkuliahan'}\nRuang: ${isGmeet ? 'Google Meet' : 'Zoom'}\nPemohon: ${booking.requestedBy || '-'}\nDosen: ${booking.pic || '-'}\n(Klik untuk setujui/tolak)`}
         className={`group relative p-2.5 sm:p-3 rounded-2xl bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${
           isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
-        }`}
+        } ${isPast ? 'opacity-50 grayscale-[30%]' : ''}`}
       >
         <div className="flex items-start justify-between gap-1.5">
           <h4
@@ -103,8 +115,18 @@ function BookingCard({
       title={`${booking.note || 'Perkuliahan'}\nRuang: ${isGmeet ? 'Google Meet' : 'Zoom Kebidanan'}\nDosen: ${booking.pic || '-'}\nAngkatan: ${booking.batch}\n(Klik untuk detail)`}
       className={`group relative p-2.5 sm:p-3 rounded-2xl ${batchInfo?.cardBg || ''} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer flex flex-col justify-between ${
         isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
-      } ${isLiveNow ? 'ring-2 ring-emerald-500 shadow-md z-10' : ''}`}
+      } ${isLiveNow ? 'ring-2 ring-emerald-500 shadow-md z-10' : ''} ${isPast ? 'opacity-55 grayscale-[20%] saturate-50' : ''}`}
     >
+      {/* Badge Selesai – hanya pada slot hari ini yang sudah lewat */}
+      {isPast && (
+        <div className="absolute top-1.5 right-1.5 z-10">
+          <span className="inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-500/80 dark:bg-zinc-600/80 text-white tracking-wide">
+            <CheckCheck className="w-2.5 h-2.5" />
+            Selesai
+          </span>
+        </div>
+      )}
+
       {/* Top Row: Course Title & Action */}
       <div className="flex items-start justify-between gap-1.5">
         <h4
@@ -197,20 +219,47 @@ export function ScheduleCell({
   onSelectCell,
   onShowDetail,
   onRequestSlot,
+  currentTotalMinutes = 0,
 }) {
   const activeBookings = bookings && bookings.length > 0
     ? bookings
     : booking ? [booking] : [];
 
+  // Opsi C: apakah slot hari ini sudah berlalu?
+  const isPast = isSlotPastToday(slot, isToday, currentTotalMinutes);
+
   // Empty Slot (Soft off-white dashed card)
   if (activeBookings.length === 0) {
     const handleEmptyClick = () => {
+      if (isPast && !isAdmin) return; // Mahasiswa tidak bisa ajukan slot yang sudah lewat hari ini
       if (isAdmin) {
         onSelectCell({ day, slot, booking: null });
       } else if (onRequestSlot) {
         onRequestSlot({ day, slot });
       }
     };
+
+    // Slot kosong yang sudah selesai hari ini (tampilan khusus untuk mahasiswa)
+    if (isPast && !isAdmin) {
+      return (
+        <div
+          title={`Sesi ${slot.label} hari ini sudah selesai`}
+          className="group relative p-2.5 sm:p-3 rounded-2xl bg-zinc-100/50 dark:bg-zinc-900/25 border border-zinc-200/40 dark:border-zinc-800/40 flex flex-col justify-between min-h-[110px] sm:min-h-[120px] opacity-45 cursor-not-allowed"
+        >
+          <div className="flex items-center justify-between text-zinc-400 dark:text-zinc-600">
+            <span className="text-[10px] font-mono font-medium whitespace-nowrap">{slot.label}</span>
+            <span className="text-zinc-300 dark:text-zinc-700 font-mono text-xs">—</span>
+          </div>
+          <div className="flex flex-col items-center justify-center my-1 gap-1">
+            <CheckCheck className="w-4 h-4 text-zinc-300 dark:text-zinc-600" />
+            <span className="text-[10.5px] font-semibold text-zinc-400 dark:text-zinc-500">Sesi Selesai</span>
+          </div>
+          <div className="text-[9.5px] text-zinc-300 dark:text-zinc-600 text-center">
+            Sudah berlalu hari ini
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div
@@ -265,6 +314,7 @@ export function ScheduleCell({
             day={day}
             slot={slot}
             isLiveNow={isLiveNow}
+            isPast={isPast}
             isAdmin={isAdmin}
             onSelectCell={onSelectCell}
             onShowDetail={onShowDetail}
@@ -282,6 +332,7 @@ export function ScheduleCell({
       day={day}
       slot={slot}
       isLiveNow={isLiveNow}
+      isPast={isPast}
       isAdmin={isAdmin}
       onSelectCell={onSelectCell}
       onShowDetail={onShowDetail}

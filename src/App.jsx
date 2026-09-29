@@ -450,6 +450,7 @@ export function App() {
           bookings={bookings}
           currentDay={currentDay}
           activeSlot={activeSlot}
+          currentTotalMinutes={currentTotalMinutes}
           isAdmin={isAdmin}
           onSelectCell={handleSelectCell}
           onShowDetail={handleShowDetail}
