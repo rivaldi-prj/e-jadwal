@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   TIME_SLOTS,
+  DAYS_OF_WEEK,
   INITIAL_BOOKINGS,
   DEFAULT_ZOOM_CONFIG,
   DEFAULT_ADMIN_PIN,
@@ -64,22 +65,62 @@ function getSlotMinutes(timeSlotLabel) {
   };
 }
 
+// Helper: cek apakah jadwal perkuliahan sudah berlalu (otomatis dihapus agar slot kosong untuk minggu depan)
+export function isBookingPast(booking) {
+  if (!booking || !booking.day) return false;
+  try {
+    const now = new Date();
+    const currentDay = now.toLocaleDateString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long',
+    });
+    const curIdx = DAYS_OF_WEEK.indexOf(currentDay);
+    const bIdx = DAYS_OF_WEEK.indexOf(booking.day);
+    if (curIdx < 0 || bIdx < 0) return false;
+
+    const bDate = new Date(booking.updatedAt || booking.requestedAt || booking.approvedAt || 0);
+    const bDay = bDate.toLocaleDateString('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      weekday: 'long',
+    });
+    const todayStart = new Date(now.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta' })).getTime();
+
+    // 1. Hari perkuliahan sudah lewat di minggu berjalan (misal booking Senin/Selasa ketika hari ini Rabu)
+    // dan booking dibuat sebelum hari ini (bukan pengajuan baru untuk minggu depan)
+    if (bIdx < curIdx && bDate.getTime() < todayStart) {
+      return true;
+    }
+
+    // 2. Booking dibuat pada hari yang sama dengan hari perkuliahannya dan sudah lewat lebih dari 24 jam
+    if (booking.day === bDay && (now.getTime() - bDate.getTime()) > 24 * 60 * 60 * 1000) {
+      return true;
+    }
+
+    // 3. Booking sudah lebih dari 7 hari lalu (pembersihan total jadwal lama)
+    if ((now.getTime() - bDate.getTime()) > 7 * 24 * 60 * 60 * 1000) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export function useScheduleStore() {
   // Inisialisasi awal: jika Supabase tersedia, mulai dengan array kosong —
-  // data otomatis diisi saat initCloudSync() selesai. Ini memastikan
-  // semua browser (Chrome, Brave, incognito) menampilkan data yang SAMA dari
-  // cloud, bukan data berbeda dari localStorage masing-masing browser.
+  // data otomatis diisi saat initCloudSync() selesai.
   const [bookings, setBookings] = useState(() => {
     try {
       if (isSupabaseConfigured()) {
-        // Supabase dikonfigurasi: gunakan localStorage hanya sebagai cache sementara
-        // sampai cloud data tiba (mengurangi flash of empty content)
         const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
-        return saved ? JSON.parse(saved) : [];
+        const parsed = saved ? JSON.parse(saved) : [];
+        return Array.isArray(parsed) ? parsed.filter(b => !isBookingPast(b)) : [];
       }
-      // Offline mode: gunakan localStorage atau INITIAL_BOOKINGS
+      // Offline mode
       const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
-      return saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
+      const parsed = saved ? JSON.parse(saved) : INITIAL_BOOKINGS;
+      return Array.isArray(parsed) ? parsed.filter(b => !isBookingPast(b)) : INITIAL_BOOKINGS;
     } catch {
       return isSupabaseConfigured() ? [] : INITIAL_BOOKINGS;
     }
@@ -281,8 +322,16 @@ export function useScheduleStore() {
               room,
             };
           });
-          setBookings(mapped);
-          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(mapped));
+
+          // Otomatis hapus jadwal yang sudah berlalu (Senin/Selasa yang sudah lewat, dll)
+          const expiredBookings = mapped.filter(b => isBookingPast(b));
+          if (expiredBookings.length > 0) {
+            const expiredIds = expiredBookings.map(b => b.id);
+            client.from('bookings').delete().in('id', expiredIds).catch(() => {});
+          }
+          const validBookings = mapped.filter(b => !isBookingPast(b));
+          setBookings(validBookings);
+          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(validBookings));
         }
 
         // 2. Fetch remote zoom config
@@ -1049,6 +1098,27 @@ export function useScheduleStore() {
     return { success: true };
   }, [bookings, broadcastChange]);
 
+  const cleanupExpiredBookings = useCallback(async () => {
+    const expired = bookings.filter(b => isBookingPast(b));
+    if (expired.length === 0) return { success: true, count: 0 };
+
+    const expiredIds = expired.map(b => b.id);
+    const updated = bookings.filter(b => !expiredIds.includes(b.id));
+    setBookings(updated);
+    localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(updated));
+    broadcastChange('BOOKINGS_UPDATED', updated);
+
+    const client = getSupabaseClient();
+    if (client) {
+      try {
+        await client.from('bookings').delete().in('id', expiredIds);
+      } catch (e) {
+        console.warn('Cloud sync error on cleanupExpiredBookings:', e);
+      }
+    }
+    return { success: true, count: expired.length };
+  }, [bookings, broadcastChange]);
+
   const updateZoomConfigState = useCallback(async (newConfig) => {
     const updated = {
       ...zoomConfig,
@@ -1230,6 +1300,7 @@ export function useScheduleStore() {
     cloudStatus,
     lastSyncTime,
     pushLocalToCloud,
+    cleanupExpiredBookings,
     isLoading,
     syncError,
     refetch,
