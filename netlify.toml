@@ -4,10 +4,11 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  # ── EmailJS: Email Notifikasi Otomatis ─────────────────────────────────────
-  # Nilai ini harus sama persis dengan file .env lokal Anda.
-  # ALTERNATIF: Set variabel ini di Netlify Dashboard → Site settings → Environment variables
-  # (jika sudah di-set di dashboard, baris di bawah ini tidak diperlukan dan bisa dihapus)
+  # ── Brevo (Sendinblue): 300 email/hari gratis (Prioritas Utama) ─────────────
+  VITE_BREVO_SENDER_EMAIL = "s1kebidanan@fikes.unbrah.ac.id"
+  VITE_BREVO_SENDER_NAME = "E-Jadwal S1 Kebidanan UNBRAH"
+  VITE_OPERATOR_EMAIL = "s1kebidanan@fikes.unbrah.ac.id"
+  # ── EmailJS: Email Notifikasi Otomatis (Cadangan / Failover) ───────────────
   VITE_EMAILJS_SERVICE_ID = "service_bkcw4ax"
   VITE_EMAILJS_TEMPLATE_APPROVED = "template_7m6nd1l"
   VITE_EMAILJS_TEMPLATE_REJECTED = "template_7m6nd1l"
