@@ -68,6 +68,16 @@ export function ScheduleMatrix({
     ? [selectedDay]
     : DAYS_OF_WEEK;
 
+  // Helper: apakah hari sudah lewat dalam minggu ini?
+  // DAYS_OF_WEEK: ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu']
+  const currentDayIndex = DAYS_OF_WEEK.indexOf(currentDay);
+  const isPastDay = (day) => {
+    if (day === currentDay) return false;
+    const dayIndex = DAYS_OF_WEEK.indexOf(day);
+    if (dayIndex < 0 || currentDayIndex < 0) return false;
+    return dayIndex < currentDayIndex;
+  };
+
   // Public: only approved. Admin: all bookings
   const visibleBookings = isAdmin
     ? bookings
@@ -261,6 +271,7 @@ export function ScheduleMatrix({
                   const isToday = day === currentDay;
                   const isSelected = day === agendaDay;
                   const dayCount = getDayCount(day);
+                  const pastDay = isPastDay(day);
 
                   return (
                     <button
@@ -272,17 +283,24 @@ export function ScheduleMatrix({
                           ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 shadow-xs font-semibold'
                           : isToday
                           ? 'text-emerald-700 dark:text-emerald-400 font-medium hover:bg-white/50'
+                          : pastDay
+                          ? 'text-zinc-400 dark:text-zinc-600 opacity-60 hover:opacity-90'
                           : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200'
                       }`}
                     >
-                      <span>{day}</span>
+                      <span className={pastDay && !isSelected ? 'line-through decoration-zinc-400/60' : ''}>{day}</span>
                       {isToday && (
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      )}
+                      {pastDay && !isSelected && (
+                        <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-wide">lewat</span>
                       )}
                       <span
                         className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                           isSelected
                             ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-bold'
+                            : pastDay
+                            ? 'text-zinc-300 dark:text-zinc-700'
                             : 'text-slate-400 dark:text-zinc-500'
                         }`}
                       >
@@ -517,19 +535,26 @@ export function ScheduleMatrix({
                       {displayDays.map((day) => {
                         const isToday = day === currentDay;
                         const dayCount = getDayCount(day);
+                        const pastDay = isPastDay(day);
                         return (
                           <th
                             key={day}
                             className={`py-3 px-2 text-center transition-colors border-r border-zinc-200/60 dark:border-zinc-800 last:border-r-0 ${
                               isToday
                                 ? 'bg-emerald-500/10'
+                                : pastDay
+                                ? 'bg-zinc-50/60 dark:bg-zinc-900/30 opacity-60'
                                 : ''
                             }`}
                           >
                             <div className="flex flex-col items-center gap-0.5">
                               <div className="flex items-center gap-1.5">
                                 <span className={`text-sm font-bold ${
-                                  isToday ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-800 dark:text-zinc-200'
+                                  isToday
+                                    ? 'text-emerald-700 dark:text-emerald-300'
+                                    : pastDay
+                                    ? 'text-zinc-400 dark:text-zinc-600 line-through decoration-zinc-400/50'
+                                    : 'text-zinc-800 dark:text-zinc-200'
                                 }`}>
                                   {day}
                                 </span>
@@ -537,8 +562,10 @@ export function ScheduleMatrix({
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                                 )}
                               </div>
-                              <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
-                                {dayCount > 0 ? `${dayCount} Sesi` : 'Kosong'}
+                              <span className={`text-[10px] font-medium ${
+                                pastDay ? 'text-zinc-300 dark:text-zinc-700' : 'text-zinc-400 dark:text-zinc-500'
+                              }`}>
+                                {pastDay ? 'Sudah lewat' : dayCount > 0 ? `${dayCount} Sesi` : 'Kosong'}
                               </span>
                             </div>
                           </th>
@@ -593,6 +620,7 @@ export function ScheduleMatrix({
                           {/* Day Cells */}
                           {displayDays.map((day) => {
                             const isToday = day === currentDay;
+                            const pastDay = isPastDay(day);
 
                             // Find bookings (respects visibility per role)
                             const rawBookings = visibleBookings.filter(
@@ -610,9 +638,11 @@ export function ScheduleMatrix({
                             return (
                               <td
                                 key={`${day}_${slot.id}`}
-                                className={`p-1.5 align-top border-r border-zinc-200/40 dark:border-zinc-800/40 last:border-r-0 h-full ${
+                                className={`p-1.5 align-top border-r border-zinc-200/40 dark:border-zinc-800/40 last:border-r-0 h-full transition-opacity ${
                                   isToday
                                     ? 'bg-emerald-500/[0.02]'
+                                    : pastDay
+                                    ? 'opacity-40 grayscale-[30%] pointer-events-none'
                                     : ''
                                 }`}
                               >
@@ -632,6 +662,7 @@ export function ScheduleMatrix({
                               </td>
                             );
                           })}
+
                         </tr>
                       );
                     })}
