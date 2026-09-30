@@ -359,8 +359,11 @@ export function RequestSlotModal({
       if (res.booking) {
         saveMyRequest(res.booking);
       }
-      // Simpan room aktual dari hasil booking (bukan dari formData yang bisa di-overwrite useEffect)
-      const actualRoom = res.booking?.room || finalRoom;
+      // Gunakan finalRoom (dari slotAvailability frontend) sebagai sumber kebenaran utama.
+      // res.booking?.room bisa saja stale/salah jika data di store belum sinkron dengan Supabase.
+      // Frontend slotAvailability sudah menghitung berdasarkan data yang ditampilkan ke user,
+      // sehingga lebih akurat untuk tampilan modal sukses.
+      const actualRoom = finalRoom || res.booking?.room || 'zoom';
       setSubmittedRoom(actualRoom);
       setFormData(prev => ({ ...prev, _autoApproved: res.autoApproved }));
       setSubmitted(true);
