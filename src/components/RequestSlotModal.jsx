@@ -385,63 +385,70 @@ export function RequestSlotModal({
   if (submitted) {
     const isAutoApproved = formData._autoApproved;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-        <div className="w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-8 text-center animate-modal-pop">
-          <div className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 ${
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden animate-modal-pop">
+          {/* Success / Pending Header Band */}
+          <div className={`px-6 pt-8 pb-6 text-center ${
             isAutoApproved
-              ? 'bg-emerald-100 dark:bg-emerald-900/40'
-              : 'bg-amber-100 dark:bg-amber-900/40'
+              ? 'bg-gradient-to-b from-emerald-50 to-white dark:from-emerald-950/30 dark:to-zinc-950'
+              : 'bg-gradient-to-b from-amber-50 to-white dark:from-amber-950/30 dark:to-zinc-950'
           }`}>
-            {isAutoApproved
-              ? <CheckCircle className="w-7 h-7 text-emerald-600 dark:text-emerald-400" />
-              : <Send className="w-7 h-7 text-amber-600 dark:text-amber-400" />
-            }
-          </div>
-
-          {isAutoApproved ? (
-            <>
-              <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 mb-2">
-                🎉 Jadwal Langsung Disetujui!
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-3">
-                Jadwal <strong>{formData.note}</strong> ({formData.day}, {formData.timeSlot}) telah <strong className="text-emerald-600">disetujui otomatis</strong> karena ruang virtual tersedia. Email konfirmasi dikirimkan ke email Anda.
-              </p>
-            </>
-          ) : (
-            <>
-              <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 mb-2">Permintaan Berhasil Dikirim!</h3>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed mb-3">
-                Pengajuan untuk <strong>{formData.note}</strong> ({formData.day}, {formData.timeSlot}) telah terkirim ke sistem. Operator prodi akan meninjau jadwal Anda secara manual karena ada potensi konflik ruang.
-              </p>
-            </>
-          )}
-
-          <div className="mb-5 p-3 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-xs flex flex-col items-center justify-center gap-1">
-            <div className="flex items-center gap-2">
-              <Video className={`w-3.5 h-3.5 ${submittedRoom === 'gmeet' ? 'text-teal-600 dark:text-teal-400' : 'text-sky-600 dark:text-sky-400'}`} />
-              <span className="text-slate-700 dark:text-zinc-300 font-medium">
-                Ruang Perkuliahan: <strong className={submittedRoom === 'gmeet' ? 'text-teal-700 dark:text-teal-300' : 'text-sky-700 dark:text-sky-300'}>{submittedRoom === 'gmeet' ? 'Google Meet' : 'Zoom'}</strong>
-              </span>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md ${
+              isAutoApproved
+                ? 'bg-emerald-100 dark:bg-emerald-900/60 ring-4 ring-emerald-200/60 dark:ring-emerald-800/40'
+                : 'bg-amber-100 dark:bg-amber-900/60 ring-4 ring-amber-200/60 dark:ring-amber-800/40'
+            }`}>
+              {isAutoApproved
+                ? <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                : <Send className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+              }
             </div>
-            {submittedRoom === 'gmeet' ? (
-              <span className="text-[10.5px] text-teal-700 dark:text-teal-300 font-medium">
-                (Dialihkan ke Google Meet karena ruang Zoom pada jam ini telah terisi)
-              </span>
+
+            {isAutoApproved ? (
+              <>
+                <h3 className="font-bold text-base text-emerald-900 dark:text-emerald-100 mb-1.5">🎉 Jadwal Langsung Disetujui!</h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  <strong className="text-slate-700 dark:text-zinc-200">{formData.note}</strong> · {formData.day}, {formData.timeSlot} WIB · <strong className="text-emerald-600 dark:text-emerald-400">Disetujui Otomatis</strong>
+                </p>
+              </>
             ) : (
-              <span className="text-[10.5px] text-sky-700 dark:text-sky-300 font-medium">
-                (Ruang Virtual Zoom Utama)
-              </span>
+              <>
+                <h3 className="font-bold text-base text-slate-900 dark:text-zinc-100 mb-1.5">Permintaan Terkirim!</h3>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
+                  <strong className="text-slate-700 dark:text-zinc-200">{formData.note}</strong> · {formData.day}, {formData.timeSlot} WIB · Menunggu persetujuan operator
+                </p>
+              </>
             )}
           </div>
-          <div className="flex flex-col gap-2">
+
+          {/* Room Info */}
+          <div className="mx-5 mb-4 p-3.5 rounded-xl border text-xs flex items-center gap-3 bg-slate-50 dark:bg-zinc-900/60 border-slate-200 dark:border-zinc-800">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              submittedRoom === 'gmeet'
+                ? 'bg-teal-100 dark:bg-teal-900/40'
+                : 'bg-sky-100 dark:bg-sky-900/40'
+            }`}>
+              <Video className={`w-4 h-4 ${ submittedRoom === 'gmeet' ? 'text-teal-600 dark:text-teal-400' : 'text-sky-600 dark:text-sky-400'}`} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-slate-700 dark:text-zinc-200">
+                {submittedRoom === 'gmeet' ? 'Google Meet' : 'Zoom'}
+              </p>
+              <p className={`text-[10.5px] mt-0.5 ${ submittedRoom === 'gmeet' ? 'text-teal-700 dark:text-teal-400' : 'text-sky-700 dark:text-sky-400'}`}>
+                {submittedRoom === 'gmeet'
+                  ? 'Dialihkan karena Zoom jam ini sudah terisi'
+                  : 'Ruang virtual utama perkuliahan'}
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2 px-5 pb-5">
             {onOpenTrackModal && (
               <button
                 type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenTrackModal();
-                }}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                onClick={() => { onClose(); onOpenTrackModal(); }}
+                className="w-full py-3 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
               >
                 <ClipboardList className="w-3.5 h-3.5" />
                 <span>Lihat Status Pengajuan Saya</span>
@@ -450,7 +457,7 @@ export function RequestSlotModal({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 text-slate-700 transition-colors cursor-pointer"
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 text-slate-700 transition-colors cursor-pointer"
             >
               Tutup
             </button>
@@ -462,27 +469,28 @@ export function RequestSlotModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-lg max-h-[92vh] flex flex-col bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden animate-modal-pop">
         {/* Header */}
-        <div className="px-5 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-amber-50/60 dark:bg-amber-950/20 flex-shrink-0">
-          <div>
-            <h3 className="font-semibold text-sm text-amber-900 dark:text-amber-200">
-              Ajukan Jadwal Perkuliahan (Zoom / Google Meet)
-            </h3>
-            <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-0.5">
-              Admin akan meninjau dan menyetujui permintaan ini
-            </p>
+        <div className="px-5 py-3.5 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/10 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm text-amber-900 dark:text-amber-200">Ajukan Jadwal Perkuliahan</h3>
+              <p className="text-[11px] text-amber-700/60 dark:text-amber-400/60 mt-0.5">Pengajuan akan ditinjau operator prodi</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100/80 dark:hover:bg-zinc-800 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handlePreSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handlePreSubmit} className="p-5 space-y-5 overflow-y-auto flex-1">
           {/* Error Banner */}
           {errorMessage && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/50 text-xs text-rose-800 dark:text-rose-200">
@@ -494,131 +502,133 @@ export function RequestSlotModal({
             </div>
           )}
 
-          {/* Info banner */}
-          <div className="flex items-start justify-between gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300">
-            <div className="flex items-start gap-2 flex-1">
-              <Info className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-              <span>Permintaan berstatus <strong>Menunggu</strong> sampai admin menyetujuinya. Jadwal hanya tampil setelah disetujui.</span>
+          {/* Info + Guide banner */}
+          <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200/80 dark:bg-amber-950/20 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300">
+            <div className="flex items-center gap-2 flex-1">
+              <Info className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+              <span>Jadwal hanya muncul di kalender setelah <strong>disetujui admin</strong>. Tanda <span className="text-rose-500 font-bold">*</span> wajib diisi.</span>
             </div>
             {onOpenGuideModal && (
               <button
                 type="button"
                 onClick={onOpenGuideModal}
-                className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 underline hover:text-amber-950 dark:hover:text-white cursor-pointer whitespace-nowrap ml-1 flex-shrink-0"
+                className="text-[11px] font-semibold text-amber-700 dark:text-amber-300 underline hover:text-amber-900 dark:hover:text-amber-100 cursor-pointer whitespace-nowrap ml-1 flex-shrink-0"
               >
-                Lihat Panduan
+                Panduan
               </button>
             )}
           </div>
 
-          {/* Day & Time */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" /> Hari
-              </label>
-              <select
-                value={formData.day}
-                onChange={e => setFormData({ ...formData, day: e.target.value })}
-                className="w-full text-xs font-medium px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-zinc-400 focus:outline-none min-h-[44px]"
-              >
-                {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-
-            {/* Custom Jam Kuliah Combobox / Listbox */}
-            <div className="relative" ref={slotDropdownRef}>
-              <label
-                id="time-slot-label"
-                className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between"
-              >
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-zinc-400" /> Jam Kuliah
-                </span>
-                {formData.timeSlot && slotAvailability[formData.timeSlot] && (
-                  slotAvailability[formData.timeSlot].statusType === 'GMEET' ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
-                      <Video className="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
-                      <span>Google Meet</span>
-                    </span>
-                  ) : slotAvailability[formData.timeSlot].isAvailable ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                      <Video className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Zoom</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                      <Ban className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
-                      <span>Penuh</span>
-                    </span>
-                  )
-                )}
-              </label>
-
-              {/* Trigger Button (Satu baris ringkas saat tertutup) */}
-              <button
-                ref={slotTriggerRef}
-                id="time-slot-trigger"
-                type="button"
-                role="combobox"
-                aria-haspopup="listbox"
-                aria-expanded={isSlotDropdownOpen}
-                aria-controls="time-slot-listbox"
-                aria-labelledby="time-slot-label"
-                aria-activedescendant={
-                  isSlotDropdownOpen && highlightedIndex >= 0
-                    ? `time-slot-option-${highlightedIndex}`
-                    : undefined
-                }
-                onClick={() => {
-                  setIsSlotDropdownOpen(prev => !prev);
-                  if (!isSlotDropdownOpen) {
-                    const idx = TIME_SLOTS.findIndex(s => s.label === formData.timeSlot);
-                    setHighlightedIndex(idx >= 0 ? idx : 0);
-                  }
-                }}
-                onKeyDown={handleKeyDownTrigger}
-                className={`w-full min-h-[44px] px-3 py-2 rounded-xl border text-xs flex items-center justify-between transition-all cursor-pointer select-none ${
-                  isSlotDropdownOpen
-                    ? 'border-emerald-600 dark:border-emerald-500 ring-2 ring-emerald-600/20 dark:ring-emerald-500/20 bg-white dark:bg-zinc-900'
-                    : slotAvailability[formData.timeSlot]?.statusType === 'GMEET'
-                    ? 'border-sky-300 dark:border-sky-700 bg-sky-50/50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 hover:bg-sky-100/40 dark:hover:bg-sky-900/40'
-                    : slotAvailability[formData.timeSlot] && !slotAvailability[formData.timeSlot].isAvailable
-                    ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-950/20 text-rose-950 dark:text-rose-100'
-                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 hover:bg-zinc-100/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100'
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                  <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                  <span className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    {formData.timeSlot ? (
-                      slotAvailability[formData.timeSlot]?.statusType === 'GMEET'
-                        ? `${formData.timeSlot} WIB · Google Meet`
-                        : slotAvailability[formData.timeSlot]?.isAvailable
-                        ? `${formData.timeSlot} WIB · Zoom`
-                        : `${formData.timeSlot} WIB · Penuh`
-                    ) : (
-                      <span className="text-zinc-400 font-normal">Pilih Jam Kuliah...</span>
-                    )}
-                  </span>
-                </div>
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1.5 transition-transform duration-200 ${
-                    isSlotDropdownOpen ? 'rotate-180 text-zinc-900 dark:text-zinc-100' : ''
-                  }`}
-                />
-              </button>
-
-              {/* Listbox Popover Dropdown */}
-              {isSlotDropdownOpen && (
-                <div
-                  ref={listboxRef}
-                  id="time-slot-listbox"
-                  role="listbox"
-                  aria-labelledby="time-slot-label"
-                  tabIndex={-1}
-                  className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-60 sm:max-h-72 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl p-1.5 space-y-1.5 animate-dropdown-pop"
+          {/* SECTION: Waktu Kuliah */}
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-3">Waktu Perkuliahan</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-amber-500" /> Hari
+                </label>
+                <select
+                  value={formData.day}
+                  onChange={e => setFormData({ ...formData, day: e.target.value })}
+                  className="w-full text-sm font-semibold px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 focus:outline-none min-h-[46px] transition-colors"
                 >
+                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+
+              {/* Custom Jam Kuliah Combobox / Listbox */}
+              <div className="relative" ref={slotDropdownRef}>
+                <label
+                  id="time-slot-label"
+                  className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-500" /> Jam Kuliah
+                  </span>
+                  {formData.timeSlot && slotAvailability[formData.timeSlot] && (
+                    slotAvailability[formData.timeSlot].statusType === 'GMEET' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+                        <Video className="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
+                        <span>Google Meet</span>
+                      </span>
+                    ) : slotAvailability[formData.timeSlot].isAvailable ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <Video className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Zoom</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
+                        <Ban className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
+                        <span>Penuh</span>
+                      </span>
+                    )
+                  )}
+                </label>
+
+                {/* Trigger Button */}
+                <button
+                  ref={slotTriggerRef}
+                  id="time-slot-trigger"
+                  type="button"
+                  role="combobox"
+                  aria-haspopup="listbox"
+                  aria-expanded={isSlotDropdownOpen}
+                  aria-controls="time-slot-listbox"
+                  aria-labelledby="time-slot-label"
+                  aria-activedescendant={
+                    isSlotDropdownOpen && highlightedIndex >= 0
+                      ? `time-slot-option-${highlightedIndex}`
+                      : undefined
+                  }
+                  onClick={() => {
+                    setIsSlotDropdownOpen(prev => !prev);
+                    if (!isSlotDropdownOpen) {
+                      const idx = TIME_SLOTS.findIndex(s => s.label === formData.timeSlot);
+                      setHighlightedIndex(idx >= 0 ? idx : 0);
+                    }
+                  }}
+                  onKeyDown={handleKeyDownTrigger}
+                  className={`w-full min-h-[46px] px-3 py-2 rounded-xl border text-sm font-semibold flex items-center justify-between transition-all cursor-pointer select-none ${
+                    isSlotDropdownOpen
+                      ? 'border-amber-500 dark:border-amber-400 ring-2 ring-amber-400/20 bg-white dark:bg-zinc-900'
+                      : slotAvailability[formData.timeSlot]?.statusType === 'GMEET'
+                      ? 'border-sky-300 dark:border-sky-700 bg-sky-50/50 dark:bg-sky-950/30 text-sky-950 dark:text-sky-100 hover:bg-sky-100/40 dark:hover:bg-sky-900/40'
+                      : slotAvailability[formData.timeSlot] && !slotAvailability[formData.timeSlot].isAvailable
+                      ? 'border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-950/20 text-rose-950 dark:text-rose-100'
+                      : 'border-zinc-200 dark:border-zinc-700 bg-zinc-50 hover:bg-zinc-100/60 dark:bg-zinc-900 dark:hover:bg-zinc-800/60 text-zinc-900 dark:text-zinc-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                    <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                    <span className="truncate">
+                      {formData.timeSlot ? (
+                        slotAvailability[formData.timeSlot]?.statusType === 'GMEET'
+                          ? `${formData.timeSlot} WIB · Google Meet`
+                          : slotAvailability[formData.timeSlot]?.isAvailable
+                          ? `${formData.timeSlot} WIB · Zoom`
+                          : `${formData.timeSlot} WIB · Penuh`
+                      ) : (
+                        <span className="text-zinc-400 font-normal text-xs">Pilih Jam Kuliah...</span>
+                      )}
+                    </span>
+                  </div>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-zinc-400 shrink-0 ml-1.5 transition-transform duration-200 ${
+                      isSlotDropdownOpen ? 'rotate-180 text-zinc-900 dark:text-zinc-100' : ''
+                    }`}
+                  />
+                </button>
+
+                {/* Listbox Popover Dropdown */}
+                {isSlotDropdownOpen && (
+                  <div
+                    ref={listboxRef}
+                    id="time-slot-listbox"
+                    role="listbox"
+                    aria-labelledby="time-slot-label"
+                    tabIndex={-1}
+                    className="absolute left-0 right-0 top-full mt-1.5 z-40 max-h-60 sm:max-h-72 overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl p-1.5 space-y-1.5 animate-dropdown-pop"
+                  >
                   {TIME_SLOTS.map((slot, index) => {
                     const info = slotAvailability[slot.label];
                     const isOccupied = info && !info.isAvailable;
@@ -766,125 +776,154 @@ export function RequestSlotModal({
               )}
             </div>
           </div>
-
-          {/* Batch */}
-          <div>
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-zinc-400" /> Angkatan
-            </label>
-            <div className="grid grid-cols-4 gap-1.5">
-              {BATCHES.map(b => {
-                const isSelected = formData.batch === b.id;
-                return (
-                  <button
-                    type="button"
-                    key={b.id}
-                    onClick={() => setFormData({ ...formData, batch: b.id })}
-                    className={`py-1.5 px-2 text-center rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1 ${
-                      isSelected
-                        ? `${b.activeTab} shadow-xs ring-1 ring-inset ring-black/5 dark:ring-white/10`
-                        : 'bg-zinc-50/80 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800/80 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : b.dot}`} />
-                    <span>{b.id}</span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
-          {/* Mata Kuliah / Nama Kegiatan Searchable Combobox */}
-          <div className="relative" ref={courseDropdownRef}>
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-              Mata Kuliah / Nama Kegiatan <span className="text-rose-500">*</span>
-            </label>
+          {/* SECTION: Detail Perkuliahan */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Detail Perkuliahan</p>
 
-            {/* Combobox Trigger Button */}
-            <div
-              onClick={() => setIsCourseDropdownOpen(prev => !prev)}
-              className={`w-full min-h-[40px] px-3.5 py-2 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition-all ${
-                isCourseDropdownOpen
-                  ? 'border-zinc-900 dark:border-zinc-100 ring-2 ring-zinc-900/10 dark:ring-zinc-100/10 bg-white dark:bg-zinc-900'
-                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 hover:bg-zinc-100/60 dark:bg-zinc-900/60 dark:hover:bg-zinc-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-2 truncate">
-                <BookOpen className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                <span className={`truncate font-medium ${formData.note ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-400'}`}>
-                  {formData.note || 'Pilih Mata Kuliah...'}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                {formData.note && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFormData(prev => ({ ...prev, note: '', pic: '' }));
-                    }}
-                    className="p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 transition-colors"
-                    title="Kosongkan Pilihan"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${isCourseDropdownOpen ? 'rotate-180 text-zinc-900 dark:text-zinc-100' : ''}`} />
+            {/* Batch */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-amber-500" /> Angkatan
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {BATCHES.map(b => {
+                  const isSelected = formData.batch === b.id;
+                  return (
+                    <button
+                      type="button"
+                      key={b.id}
+                      onClick={() => setFormData({ ...formData, batch: b.id })}
+                      className={`min-h-[48px] px-2 text-center rounded-xl text-sm font-bold transition-all flex flex-col items-center justify-center gap-0.5 ${
+                        isSelected
+                          ? `${b.activeTab} shadow-sm ring-2 ring-inset ring-black/10 dark:ring-white/10 scale-[1.02]`
+                          : 'bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-600'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : b.dot}`} />
+                      <span>{b.id}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Hidden Input for HTML5 form validation */}
-            <input
-              type="text"
-              required
-              tabIndex={-1}
-              value={formData.note}
-              onChange={() => {}}
-              className="sr-only"
-            />
+            {/* Mata Kuliah / Nama Kegiatan Searchable Combobox */}
+            <div className="relative" ref={courseDropdownRef}>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                Mata Kuliah / Nama Kegiatan <span className="text-rose-500">*</span>
+              </label>
 
-            {/* Search & Option Popover Menu */}
-            {isCourseDropdownOpen && (
-              <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden animate-dropdown-pop">
-                {/* Search Bar Input */}
-                <div className="p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="Cari nama mata kuliah..."
-                      value={courseSearchQuery}
-                      onChange={(e) => setCourseSearchQuery(e.target.value)}
-                      className="w-full text-xs pl-8 pr-7 py-2 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
-                    />
-                    {courseSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setCourseSearchQuery('')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-zinc-400 hover:text-zinc-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
+              {/* Combobox Trigger Button */}
+              <div
+                onClick={() => setIsCourseDropdownOpen(prev => !prev)}
+                className={`w-full min-h-[46px] px-3.5 py-2 rounded-xl border text-sm font-semibold flex items-center justify-between cursor-pointer transition-all ${
+                  isCourseDropdownOpen
+                    ? 'border-amber-500 dark:border-amber-400 ring-2 ring-amber-400/20 bg-white dark:bg-zinc-900'
+                    : formData.note
+                    ? 'border-zinc-300 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100'
+                    : 'border-zinc-200 dark:border-zinc-700 bg-zinc-50 hover:bg-zinc-100/60 dark:bg-zinc-900 dark:hover:bg-zinc-800/60 text-zinc-400'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <BookOpen className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                  <span className={`truncate ${formData.note ? 'text-zinc-900 dark:text-zinc-100 font-semibold' : 'text-zinc-400 font-normal text-xs'}`}>
+                    {formData.note || 'Pilih Mata Kuliah...'}
+                  </span>
                 </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                  {formData.note && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormData(prev => ({ ...prev, note: '', pic: '' }));
+                      }}
+                      className="p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 transition-colors"
+                      title="Kosongkan Pilihan"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${isCourseDropdownOpen ? 'rotate-180 text-zinc-900 dark:text-zinc-100' : ''}`} />
+                </div>
+              </div>
 
-                {/* List of Courses */}
-                <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
-                  {/* Suggested Courses for selected lecturer (if any) */}
-                  {!courseSearchQuery && filteredSuggestedCourses.length > 0 && (
-                    <div className="mb-2">
-                      <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-indigo-500" />
-                        <span>Diampu oleh {formData.pic}</span>
+              {/* Hidden Input for HTML5 form validation */}
+              <input
+                type="text"
+                required
+                tabIndex={-1}
+                value={formData.note}
+                onChange={() => {}}
+                className="sr-only"
+              />
+
+              {/* Search & Option Popover Menu */}
+              {isCourseDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden animate-dropdown-pop">
+                  <div className="p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Cari nama mata kuliah..."
+                        value={courseSearchQuery}
+                        onChange={(e) => setCourseSearchQuery(e.target.value)}
+                        className="w-full text-xs pl-8 pr-7 py-2 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:ring-1 focus:ring-amber-400 dark:focus:ring-amber-500 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400"
+                      />
+                      {courseSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setCourseSearchQuery('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-zinc-400 hover:text-zinc-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin">
+                    {!courseSearchQuery && filteredSuggestedCourses.length > 0 && (
+                      <div className="mb-2">
+                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                          <Sparkles className="w-3 h-3 text-indigo-500" />
+                          <span>Diampu oleh {formData.pic}</span>
+                        </div>
+                        {filteredSuggestedCourses.map((mk) => {
+                          const isSelected = formData.note === mk;
+                          return (
+                            <button
+                              key={`sug-${mk}`}
+                              type="button"
+                              onClick={() => handleSelectCourse(mk)}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                                isSelected
+                                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold'
+                                  : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300'
+                              }`}
+                            >
+                              <span className="truncate">{mk}</span>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100 flex-shrink-0 ml-1" />}
+                            </button>
+                          );
+                        })}
                       </div>
-                      {filteredSuggestedCourses.map((mk) => {
+                    )}
+                    {!courseSearchQuery && (
+                      <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                        Daftar Mata Kuliah ({filteredCourses.length})
+                      </div>
+                    )}
+                    {filteredCourses.length > 0 ? (
+                      filteredCourses.map((mk) => {
                         const isSelected = formData.note === mk;
                         return (
                           <button
-                            key={`sug-${mk}`}
+                            key={mk}
                             type="button"
                             onClick={() => handleSelectCourse(mk)}
                             className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
@@ -897,109 +936,90 @@ export function RequestSlotModal({
                             {isSelected && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100 flex-shrink-0 ml-1" />}
                           </button>
                         );
-                      })}
-                    </div>
-                  )}
-
-                  {/* All Courses */}
-                  {!courseSearchQuery && (
-                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                      Daftar Mata Kuliah ({filteredCourses.length})
-                    </div>
-                  )}
-
-                  {filteredCourses.length > 0 ? (
-                    filteredCourses.map((mk) => {
-                      const isSelected = formData.note === mk;
-                      return (
-                        <button
-                          key={mk}
-                          type="button"
-                          onClick={() => handleSelectCourse(mk)}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-xs flex items-center justify-between transition-colors ${
-                            isSelected
-                              ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold'
-                              : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50 text-zinc-700 dark:text-zinc-300'
-                          }`}
-                        >
-                          <span className="truncate">{mk}</span>
-                          {isSelected && <Check className="w-3.5 h-3.5 text-zinc-900 dark:text-zinc-100 flex-shrink-0 ml-1" />}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <div className="py-6 text-center text-xs text-zinc-400">
-                      Tidak ada mata kuliah yang cocok dengan "{courseSearchQuery}"
-                    </div>
-                  )}
+                      })
+                    ) : (
+                      <div className="py-6 text-center text-xs text-zinc-400">
+                        Tidak ada mata kuliah yang cocok dengan "{courseSearchQuery}"
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Dosen */}
-          <div>
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-zinc-400" /> Dosen Pengajar
-              </span>
-              {suggestedLecturers.length > 0 && (
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal">
-                  ({suggestedLecturers.length} Pengampu)
-                </span>
               )}
-            </label>
-            <select
-              value={formData.pic}
-              disabled={!formData.note}
-              onChange={e => setFormData({ ...formData, pic: e.target.value })}
-              className={`w-full text-xs font-medium px-3 py-2 rounded-xl border transition-colors focus:outline-none ${
-                !formData.note
-                  ? 'bg-zinc-100 dark:bg-zinc-900/40 text-zinc-400 border-zinc-200 dark:border-zinc-800 cursor-not-allowed'
-                  : 'bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-800 focus:ring-1 focus:ring-zinc-400'
-              }`}
-            >
-              <option value="">{formData.note ? 'Pilih Dosen...' : 'Pilih Mata Kuliah Terlebih Dahulu'}</option>
-              {(suggestedLecturers.length > 0 ? suggestedLecturers : DOSEN_NAMES).map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
+            </div>
+
+            {/* Dosen */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-500" /> Dosen Pengajar
+                </span>
+                {suggestedLecturers.length > 0 && (
+                  <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-normal">
+                    {suggestedLecturers.length} Pengampu tersedia
+                  </span>
+                )}
+              </label>
+              <select
+                value={formData.pic}
+                disabled={!formData.note}
+                onChange={e => setFormData({ ...formData, pic: e.target.value })}
+                className={`w-full text-sm font-medium px-3 py-2.5 min-h-[46px] rounded-xl border transition-colors focus:outline-none ${
+                  !formData.note
+                    ? 'bg-zinc-100/60 dark:bg-zinc-800/40 text-zinc-400 border-zinc-200 dark:border-zinc-700 cursor-not-allowed opacity-60'
+                    : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400'
+                }`}
+              >
+                <option value="">{formData.note ? 'Pilih Dosen...' : '— Pilih mata kuliah dulu —'}</option>
+                {(suggestedLecturers.length > 0 ? suggestedLecturers : DOSEN_NAMES).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              {!formData.note && (
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1 flex items-center gap-1">
+                  <Info className="w-3 h-3 shrink-0" />
+                  Dosen tersedia setelah mata kuliah dipilih
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Nama Pemohon */}
-          <div>
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-zinc-400" /> Nama Pemohon <span className="text-rose-500">*</span>
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="Nama PJ Angkatan / Dosen / Pemohon..."
-              value={formData.requestedBy}
-              onChange={e => setFormData({ ...formData, requestedBy: e.target.value })}
-              className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-zinc-400 focus:outline-none placeholder-zinc-400"
-            />
-          </div>
+          {/* SECTION: Identitas Pengaju */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Identitas Pengaju</p>
 
-          {/* Email Pemohon */}
-          <div>
-            <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-zinc-400" /> Email Mahasiswa / Pemohon <span className="text-rose-500">*</span>
-              </span>
-              <span className="text-[10.5px] text-zinc-400 font-normal">Wajib untuk notifikasi</span>
-            </label>
-            <input
-              required
-              type="email"
-              placeholder="contoh: nama.mahasiswa@gmail.com"
-              value={formData.requesterEmail}
-              onChange={e => setFormData({ ...formData, requesterEmail: e.target.value })}
-              className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-zinc-400 focus:outline-none placeholder-zinc-400"
-            />
-            <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1">
-              Informasi persetujuan / konfirmasi dan tautan ruang kuliah (Zoom / Google Meet) akan dikirimkan ke email ini.
-            </p>
+            {/* Nama Pemohon */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-amber-500" /> Nama Pemohon <span className="text-rose-500">*</span>
+              </label>
+              <input
+                required
+                type="text"
+                placeholder="Nama PJ Angkatan / Dosen / Pemohon..."
+                value={formData.requestedBy}
+                onChange={e => setFormData({ ...formData, requestedBy: e.target.value })}
+                className="w-full text-sm px-3.5 py-2.5 min-h-[46px] rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 focus:outline-none placeholder-zinc-400 transition-colors"
+              />
+            </div>
+
+            {/* Email Pemohon */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-amber-500" /> Email Pemohon <span className="text-rose-500">*</span>
+              </label>
+              <input
+                required
+                type="email"
+                placeholder="contoh: nama@gmail.com"
+                value={formData.requesterEmail}
+                onChange={e => setFormData({ ...formData, requesterEmail: e.target.value })}
+                className="w-full text-sm px-3.5 py-2.5 min-h-[46px] rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 focus:outline-none placeholder-zinc-400 transition-colors"
+              />
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1.5 flex items-center gap-1.5">
+                <Mail className="w-3 h-3 shrink-0" />
+                Notifikasi persetujuan &amp; tautan ruang kuliah dikirim ke email ini
+              </p>
+            </div>
           </div>
 
           {/* Duplicate Warning Banner */}
@@ -1022,30 +1042,34 @@ export function RequestSlotModal({
           )}
 
           {/* Footer */}
-          <div className="pt-3 border-t border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3.5 py-2 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              Batal
-            </button>
+          <div className="pt-4 border-t border-zinc-200/80 dark:border-zinc-800/80 flex flex-col gap-2">
             <button
               type="submit"
               disabled={isSubmitting || Boolean(duplicateWarning) || !formData.note || !formData.requestedBy.trim()}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-xs transition-colors ${
+              className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white shadow-sm transition-all active:scale-[0.98] ${
                 duplicateWarning
-                  ? 'bg-zinc-400 dark:bg-zinc-700 cursor-not-allowed opacity-80'
-                  : 'bg-amber-600 hover:bg-amber-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
+                  ? 'bg-zinc-400 dark:bg-zinc-700 cursor-not-allowed opacity-70'
+                  : isSubmitting
+                  ? 'bg-amber-500 cursor-wait'
+                  : !formData.note || !formData.requestedBy.trim()
+                  ? 'bg-amber-400/60 dark:bg-amber-700/40 cursor-not-allowed opacity-60'
+                  : 'bg-amber-600 hover:bg-amber-500 cursor-pointer'
               }`}
             >
               {isSubmitting ? (
-                <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Mengirim...</>
+                <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Mengirim...</>
               ) : duplicateWarning ? (
-                <><AlertTriangle className="w-3.5 h-3.5" />Jadwal Sudah Ada / Diajukan</>
+                <><AlertTriangle className="w-4 h-4" />Jadwal Sudah Ada / Diajukan</>
               ) : (
-                <><Send className="w-3.5 h-3.5" />Kirim Permintaan</>
+                <><Send className="w-4 h-4" />Kirim Permintaan Jadwal</>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2 rounded-xl text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              Batal
             </button>
           </div>
         </form>
