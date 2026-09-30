@@ -64,6 +64,9 @@ export function RequestSlotModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  // State untuk pop-up konfirmasi sebelum kirim
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
   // State terpisah untuk menyimpan room yang benar-benar dialokasikan setelah submit berhasil
   const [submittedRoom, setSubmittedRoom] = useState('zoom');
 
@@ -334,26 +337,33 @@ export function RequestSlotModal({
     return null;
   }, [allBookings, formData.day, formData.timeSlot, formData.note, slotAvailability]);
 
-  const handleSubmit = async (e) => {
+  // Langkah 1: Validasi form → tampilkan konfirmasi
+  const handlePreSubmit = (e) => {
     e.preventDefault();
-    if (isSubmitting) return; // Anti-spam click lock
+    if (isSubmitting) return;
     if (duplicateWarning) {
       setErrorMessage(duplicateWarning.message);
       return;
     }
     if (!formData.note.trim() || !formData.requestedBy.trim()) return;
 
-    // Pastikan room selalu ditentukan dari status ketersediaan slot yang sedang dipilih
     const slotInfo = slotAvailability[formData.timeSlot];
     const finalRoom = (slotInfo && slotInfo.room === 'gmeet') ? 'gmeet' : 'zoom';
-    const payload = {
-      ...formData,
-      room: finalRoom,
-    };
+    const payload = { ...formData, room: finalRoom };
 
+    setPendingPayload(payload);
+    setShowConfirm(true);
+  };
+
+  // Langkah 2: User konfirmasi → kirim pengajuan
+  const handleConfirmSubmit = async () => {
+    if (!pendingPayload || isSubmitting) return;
+    const finalRoom = pendingPayload.room;
+
+    setShowConfirm(false);
     setIsSubmitting(true);
     setErrorMessage('');
-    const res = await onRequest(payload);
+    const res = await onRequest(pendingPayload);
     setIsSubmitting(false);
     if (res?.success) {
       if (res.booking) {
@@ -361,8 +371,6 @@ export function RequestSlotModal({
       }
       // Gunakan finalRoom (dari slotAvailability frontend) sebagai sumber kebenaran utama.
       // res.booking?.room bisa saja stale/salah jika data di store belum sinkron dengan Supabase.
-      // Frontend slotAvailability sudah menghitung berdasarkan data yang ditampilkan ke user,
-      // sehingga lebih akurat untuk tampilan modal sukses.
       const actualRoom = finalRoom || res.booking?.room || 'zoom';
       setSubmittedRoom(actualRoom);
       setFormData(prev => ({ ...prev, _autoApproved: res.autoApproved }));
@@ -453,13 +461,14 @@ export function RequestSlotModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
       <div className="w-full max-w-lg max-h-[92vh] flex flex-col bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden animate-modal-pop">
         {/* Header */}
         <div className="px-5 py-4 border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between bg-amber-50/60 dark:bg-amber-950/20 flex-shrink-0">
           <div>
             <h3 className="font-semibold text-sm text-amber-900 dark:text-amber-200">
-              Ajukan Jadwal Perkuliahan Zoom
+              Ajukan Jadwal Perkuliahan (Zoom / Google Meet)
             </h3>
             <p className="text-xs text-amber-700/70 dark:text-amber-400/70 mt-0.5">
               Admin akan meninjau dan menyetujui permintaan ini
@@ -473,7 +482,7 @@ export function RequestSlotModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handlePreSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
           {/* Error Banner */}
           {errorMessage && (
             <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 dark:bg-rose-950/30 dark:border-rose-800/50 text-xs text-rose-800 dark:text-rose-200">
@@ -989,7 +998,7 @@ export function RequestSlotModal({
               className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 focus:ring-1 focus:ring-zinc-400 focus:outline-none placeholder-zinc-400"
             />
             <p className="text-[10.5px] text-zinc-500 dark:text-zinc-400 mt-1">
-              Informasi persetujuan / alasan penolakan dan tautan Zoom dapat dikirimkan ke email ini.
+              Informasi persetujuan / konfirmasi dan tautan ruang kuliah (Zoom / Google Meet) akan dikirimkan ke email ini.
             </p>
           </div>
 
@@ -1042,5 +1051,85 @@ export function RequestSlotModal({
         </form>
       </div>
     </div>
+
+    {/* ── Modal Konfirmasi Pengajuan ── */}
+    {showConfirm && pendingPayload && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+        <div className="w-full max-w-sm bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200/80 dark:border-zinc-800/80 overflow-hidden animate-modal-pop">
+          {/* Confirm Header */}
+          <div className="px-5 py-4 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200/60 dark:border-amber-800/40 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center flex-shrink-0">
+              <Send className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-amber-900 dark:text-amber-200">Konfirmasi Pengajuan Jadwal</h4>
+              <p className="text-[11px] text-amber-700/70 dark:text-amber-400/70 mt-0.5">Pastikan data sudah benar sebelum dikirim</p>
+            </div>
+          </div>
+
+          {/* Summary */}
+          <div className="px-5 py-4 space-y-2.5">
+            {[
+              { label: 'Mata Kuliah', value: pendingPayload.note || '-', bold: true },
+              { label: 'Hari', value: pendingPayload.day },
+              { label: 'Jam', value: pendingPayload.timeSlot + ' WIB' },
+              { label: 'Angkatan', value: pendingPayload.batch },
+              { label: 'Dosen / PIC', value: pendingPayload.pic || '-' },
+              {
+                label: 'Ruang',
+                value: pendingPayload.room === 'gmeet' ? 'Google Meet' : 'Zoom',
+                isRoom: true,
+                room: pendingPayload.room,
+              },
+              { label: 'Nama Pengaju', value: pendingPayload.requestedBy },
+              { label: 'Email', value: pendingPayload.requesterEmail || '-' },
+            ].map(({ label, value, bold, isRoom, room }) => (
+              <div key={label} className="flex items-start gap-2">
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 w-28 flex-shrink-0 pt-0.5">{label}</span>
+                <span className={`text-[11.5px] flex-1 leading-snug ${
+                  isRoom
+                    ? room === 'gmeet'
+                      ? 'font-bold text-teal-700 dark:text-teal-300'
+                      : 'font-bold text-sky-700 dark:text-sky-300'
+                    : bold
+                    ? 'font-semibold text-zinc-900 dark:text-zinc-100'
+                    : 'text-zinc-800 dark:text-zinc-200'
+                }`}>
+                  {isRoom && (
+                    <Video className="w-3 h-3 inline-block mr-1 -mt-0.5" />
+                  )}
+                  {value}
+                  {isRoom && room === 'gmeet' && (
+                    <span className="block text-[10px] text-teal-600 dark:text-teal-400 font-normal mt-0.5">
+                      (Ruang Zoom jam ini sudah terisi, dialihkan ke Google Meet)
+                    </span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="px-5 pb-5 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleConfirmSubmit}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Ya, Kirim Pengajuan
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(false)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors cursor-pointer"
+            >
+              Periksa Kembali
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

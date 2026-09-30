@@ -136,11 +136,11 @@ export function useScheduleStore() {
         try {
           const hashed = await hashPin(DEFAULT_ADMIN_PIN);
           setAdminPin(hashed);
-        } catch {}
+        } catch { }
       }
     }
     ensureHashedPin();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const [isAdmin, setIsAdminState] = useState(() => {
@@ -703,7 +703,7 @@ export function useScheduleStore() {
     // 1. Zoom SELALU menjadi prioritas utama untuk semua pengajuan jika slot Zoom masih kosong.
     // 2. Google Meet HANYA dialokasikan jika slot Zoom pada jam tersebut sudah terisi perkuliahan lain.
     // 3. Jika kedua ruang (Zoom & Meet) sudah terisi, tolak dengan pesan bahwa slot penuh.
-    let assignedRoom = 'zoom';
+    let assignedRoom = bookingData.room === 'gmeet' ? 'gmeet' : 'zoom';
     if (zoomApproved) {
       if (!gmeetOccupied) {
         assignedRoom = 'gmeet';
