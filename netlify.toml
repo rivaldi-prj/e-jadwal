@@ -4,6 +4,17 @@
 
 [build.environment]
   NODE_VERSION = "20"
+  # ── EmailJS: Email Notifikasi Otomatis ─────────────────────────────────────
+  # Nilai ini harus sama persis dengan file .env lokal Anda.
+  # ALTERNATIF: Set variabel ini di Netlify Dashboard → Site settings → Environment variables
+  # (jika sudah di-set di dashboard, baris di bawah ini tidak diperlukan dan bisa dihapus)
+  VITE_EMAILJS_SERVICE_ID = "service_bkcw4ax"
+  VITE_EMAILJS_TEMPLATE_APPROVED = "template_7m6nd1l"
+  VITE_EMAILJS_TEMPLATE_REJECTED = "template_7m6nd1l"
+  VITE_EMAILJS_PUBLIC_KEY = "8z3Rlaf6sA1H7PPhv"
+  # ── Supabase ────────────────────────────────────────────────────────────────
+  VITE_SUPABASE_URL = "https://xgawnlzippscyknydqmt.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhnYXdubHppcHBzY3lrbnlkcW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDI3NjgsImV4cCI6MjEwNTcxODc2OH0.-rZ8yq4ISMlgmCmrHE2zkyb3Sw5ZxnVO8wUfmVcsEck"
 
 # SPA Routing: redirect semua request ke index.html
 # agar /admin dan path lainnya tidak 404 di Netlify
@@ -11,3 +22,4 @@
   from = "/*"
   to = "/index.html"
   status = 200
+

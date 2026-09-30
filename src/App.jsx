@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BOOKING_STATUS } from './constants/scheduleConfig';
 import fikesLogo from './assets/logo-fikes-unbrah.png';
 import { useCurrentTime } from './hooks/useCurrentTime';
 import { useScheduleStore } from './hooks/useScheduleStore';
@@ -370,38 +371,46 @@ export function App() {
           </div>
 
           {/* Minimalist Stats Counters (Responsive on both mobile and desktop) */}
-          <div className="flex items-center justify-around sm:justify-center gap-2.5 sm:gap-6 md:gap-7 w-full sm:w-auto self-stretch sm:self-end md:self-center bg-white/90 dark:bg-zinc-900/90 px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xs mt-1 sm:mt-0">
-            <div className="flex flex-col items-center text-center min-w-[64px]">
-              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1.5 whitespace-nowrap">
-                Total Sesi
-              </div>
-              <div className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
-                {bookings.length}
-              </div>
-            </div>
+          {(() => {
+            const approvedBookings = bookings.filter(b => (b.status || BOOKING_STATUS.APPROVED) === BOOKING_STATUS.APPROVED);
+            const uniqueDays = new Set(approvedBookings.map(b => b.day)).size;
+            const uniqueBatches = new Set(approvedBookings.map(b => b.batch)).size;
+            return (
+              <div className="flex items-center justify-around sm:justify-center gap-2.5 sm:gap-6 md:gap-7 w-full sm:w-auto self-stretch sm:self-end md:self-center bg-white/90 dark:bg-zinc-900/90 px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xs mt-1 sm:mt-0">
+                <div className="flex flex-col items-center text-center min-w-[64px]">
+                  <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1.5 whitespace-nowrap">
+                    Total Sesi
+                  </div>
+                  <div className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
+                    {approvedBookings.length}
+                  </div>
+                </div>
 
-            <div className="w-px h-7 bg-zinc-200/80 dark:bg-zinc-800" />
+                <div className="w-px h-7 bg-zinc-200/80 dark:bg-zinc-800" />
 
-            <div className="flex flex-col items-center text-center min-w-[64px]">
-              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1.5 whitespace-nowrap">
-                Hari Kuliah
-              </div>
-              <div className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
-                6
-              </div>
-            </div>
+                <div className="flex flex-col items-center text-center min-w-[64px]">
+                  <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1.5 whitespace-nowrap">
+                    Hari Kuliah
+                  </div>
+                  <div className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
+                    {uniqueDays}
+                  </div>
+                </div>
 
-            <div className="w-px h-7 bg-zinc-200/80 dark:bg-zinc-800" />
+                <div className="w-px h-7 bg-zinc-200/80 dark:bg-zinc-800" />
 
-            <div className="flex flex-col items-center text-center min-w-[64px]">
-              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1.5 whitespace-nowrap">
-                Angkatan
+                <div className="flex flex-col items-center text-center min-w-[64px]">
+                  <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider leading-none mb-1.5 whitespace-nowrap">
+                    Angkatan
+                  </div>
+                  <div className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
+                    {uniqueBatches}
+                  </div>
+                </div>
               </div>
-              <div className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100 tracking-tight leading-none">
-                4
-              </div>
-            </div>
-          </div>
+            );
+          })()}
+
         </div>
 
         {/* Panel Pengajuan Jadwal Menunggu Persetujuan Admin */}
