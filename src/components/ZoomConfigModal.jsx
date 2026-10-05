@@ -29,6 +29,7 @@ import { showConfirmDialog } from '../utils/sweetalert';
 import {
   getSupabaseConfig,
   saveSupabaseConfig,
+  clearSupabaseConfig,
   testSupabaseConnection,
   isSupabaseConfigured,
   cleanSupabaseUrl,
@@ -247,6 +248,24 @@ export function ZoomConfigModal({
         message: 'Kredensial database cloud dihapus, kembali ke mode penyimpanan lokal.',
       });
     }
+  };
+
+  const handleResetDatabaseConfig = () => {
+    clearSupabaseConfig();
+    const fresh = getSupabaseConfig();
+    setSupabaseForm({
+      url: fresh.url || '',
+      anonKey: fresh.anonKey || '',
+    });
+    setTestState(null);
+    onShowToast({
+      type: 'info',
+      title: 'Reset ke Bawaan',
+      message: 'Kredensial database cloud telah direset ke setelan awal sistem (.env). Halaman akan dimuat ulang.',
+    });
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
   };
 
   const handleSyncToCloud = async () => {
@@ -684,24 +703,50 @@ export function ZoomConfigModal({
 
                 {/* Action Buttons */}
                 {isAdmin && (
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      disabled={!supabaseForm.url || !supabaseForm.anonKey || testState?.loading}
-                      onClick={handleTestDatabase}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition-colors disabled:opacity-50"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${testState?.loading ? 'animate-spin' : ''}`} />
-                      <span>{testState?.loading ? 'Menguji...' : 'Uji Koneksi'}</span>
-                    </button>
+                  <div className="space-y-2 pt-1">
+                    {getSupabaseConfig().source === 'manual' && (
+                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 flex items-center justify-between">
+                        <span>Menggunakan konfigurasi kustom browser lokal.</span>
+                        <button
+                          type="button"
+                          onClick={handleResetDatabaseConfig}
+                          className="font-semibold underline ml-2 hover:text-amber-900 dark:hover:text-amber-100 cursor-pointer"
+                        >
+                          Reset ke Bawaan (.env)
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!supabaseForm.url || !supabaseForm.anonKey || testState?.loading}
+                        onClick={handleTestDatabase}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${testState?.loading ? 'animate-spin' : ''}`} />
+                        <span>{testState?.loading ? 'Menguji...' : 'Uji Koneksi'}</span>
+                      </button>
 
-                    <button
-                      type="submit"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white text-white shadow-2xs transition-colors"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Simpan & Hubungkan</span>
-                    </button>
+                      <button
+                        type="submit"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white text-white shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Simpan & Hubungkan</span>
+                      </button>
+
+                      {getSupabaseConfig().source === 'manual' && (
+                        <button
+                          type="button"
+                          onClick={handleResetDatabaseConfig}
+                          className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium border border-rose-200 dark:border-rose-900 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 transition-colors cursor-pointer"
+                          title="Hapus setelan tersimpan di browser dan kembali ke bawaan (.env)"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Reset Bawaan</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
               </form>

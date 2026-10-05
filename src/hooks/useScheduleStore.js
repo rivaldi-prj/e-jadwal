@@ -327,7 +327,15 @@ export function useScheduleStore() {
           const expiredBookings = mapped.filter(b => isBookingPast(b));
           if (expiredBookings.length > 0) {
             const expiredIds = expiredBookings.map(b => b.id);
-            client.from('bookings').delete().in('id', expiredIds).catch(() => {});
+            // Supabase JS v2 query builder is PromiseLike, not a full Promise — .catch() doesn't exist on it.
+            // Use async IIFE + try/catch instead.
+            (async () => {
+              try {
+                await client.from('bookings').delete().in('id', expiredIds);
+              } catch {
+                // Silent: kegagalan hapus expired booking tidak perlu ditampilkan ke user
+              }
+            })();
           }
           const validBookings = mapped.filter(b => !isBookingPast(b));
           setBookings(validBookings);

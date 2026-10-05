@@ -212,13 +212,21 @@ export function ScheduleMatrix({
 
       {/* Sync error banner */}
       {syncError && (
-        <div className="px-3.5 py-1.5 bg-rose-500/[0.08] border-b border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex items-center justify-between">
-          <span>Gagal memperbarui data dari database cloud. Menampilkan data tersimpan.</span>
+        <div className="px-3.5 py-2 bg-rose-500/[0.08] border-b border-rose-500/20 text-rose-700 dark:text-rose-400 text-xs flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-semibold">Gagal memperbarui data dari database cloud.</span>
+            <span>Menampilkan data tersimpan.</span>
+            {typeof syncError === 'string' && syncError !== 'Gagal memuat data dari cloud.' && (
+              <span className="text-[11px] font-mono bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                {syncError.includes('Failed to fetch') ? 'Akses diblokir browser (Brave Shields / Adblock) atau offline' : syncError}
+              </span>
+            )}
+          </div>
           {onRefetch && (
             <button
               type="button"
               onClick={onRefetch}
-              className="font-semibold underline ml-2 cursor-pointer hover:text-rose-800 dark:hover:text-rose-300"
+              className="font-semibold underline ml-2 cursor-pointer hover:text-rose-800 dark:hover:text-rose-300 flex-shrink-0"
             >
               Coba lagi
             </button>

@@ -230,16 +230,22 @@ export function LiveTracker({
     <div className="no-print rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs mb-3 transition-colors overflow-hidden">
       {/* Cloud Sync Alert Header (if any) */}
       {syncError && (
-        <div className="px-3.5 py-1.5 bg-rose-50 dark:bg-rose-950/30 border-b border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between rounded-t-2xl">
-          <div className="flex items-center gap-1.5">
+        <div className="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/30 border-b border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300 flex items-center justify-between gap-3 rounded-t-2xl">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-            <span>Koneksi cloud terhambat. Menampilkan data lokal.</span>
+            <span className="font-semibold">Koneksi cloud terhambat.</span>
+            <span>Menampilkan data lokal.</span>
+            {typeof syncError === 'string' && syncError !== 'Gagal memuat data dari cloud.' && (
+              <span className="text-[11px] font-mono bg-rose-100 dark:bg-rose-900/40 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800">
+                {syncError.includes('Failed to fetch') ? 'Akses diblokir browser (Brave Shields / Adblock) atau offline' : syncError}
+              </span>
+            )}
           </div>
           {onRefetch && (
             <button
               type="button"
               onClick={onRefetch}
-              className="font-medium underline hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer"
+              className="font-medium underline hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer flex-shrink-0"
             >
               Coba lagi
             </button>
