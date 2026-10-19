@@ -152,7 +152,7 @@ export function RequestSlotModal({
     c.toLowerCase().includes(courseSearchQuery.toLowerCase())
   );
 
-  // ── PETA KETERSEDIAAN RUANG (ZOOM & GOOGLE MEET SMART FAILOVER) ──
+  // ── PETA KETERSEDIAAN RUANG (ZOOM & 2 GOOGLE MEET SMART FAILOVER) ──
   const slotAvailability = useMemo(() => {
     if (!formData.day) return {};
     const map = {};
@@ -167,7 +167,7 @@ export function RequestSlotModal({
         return isApproved && room === 'zoom' && checkTimesOverlap(slot.label, b.timeSlot);
       });
 
-      // 2. Cek apakah ada jadwal Google Meet (disetujui) di slot ini
+      // 2. Cek apakah ada jadwal Google Meet Ruang 1 (disetujui) di slot ini
       const gmeetBooking = allBookings.find(b => {
         if (b.status === 'rejected' || b.status === 'ditolak') return false;
         if (b.day !== formData.day) return false;
@@ -177,15 +177,25 @@ export function RequestSlotModal({
         return isApproved && room === 'gmeet' && checkTimesOverlap(slot.label, b.timeSlot);
       });
 
-      // 3. Cek apakah ada pengajuan lain yang berstatus menunggu (pending)
+      // 3. Cek apakah ada jadwal Google Meet Ruang 2 (disetujui) di slot ini
+      const gmeet2Booking = allBookings.find(b => {
+        if (b.status === 'rejected' || b.status === 'ditolak') return false;
+        if (b.day !== formData.day) return false;
+        const s = (b.status || 'approved').toLowerCase();
+        const isApproved = s === 'approved' || s === 'disetujui';
+        const room = b.room || 'zoom';
+        return isApproved && room === 'gmeet2' && checkTimesOverlap(slot.label, b.timeSlot);
+      });
+
+      // 4. Cek apakah ada pengajuan lain yang berstatus menunggu (pending)
       const pendingBooking = allBookings.find(b => {
         if (b.status !== 'pending' && b.status !== 'menunggu') return false;
         if (b.day !== formData.day) return false;
         return checkTimesOverlap(slot.label, b.timeSlot);
       });
 
-      if (zoomBooking && gmeetBooking) {
-        // Kedua ruang (Zoom dan Google Meet) sudah terisi
+      if (zoomBooking && gmeetBooking && gmeet2Booking) {
+        // Ketiga ruang (Zoom, Google Meet 1, dan Google Meet 2) sudah terisi
         map[slot.label] = {
           statusType: 'FULL',
           isAvailable: false,
@@ -193,19 +203,33 @@ export function RequestSlotModal({
           room: 'full',
           zoomBooking,
           gmeetBooking,
-          statusText: 'Penuh · Zoom dan Google Meet terpakai',
+          gmeet2Booking,
+          statusText: 'Penuh · Zoom & 2 Google Meet terpakai',
+          hasPending: Boolean(pendingBooking),
+          pendingBooking,
+        };
+      } else if (zoomBooking && gmeetBooking) {
+        // Zoom & Meet 1 terisi, dialihkan ke Google Meet 2
+        map[slot.label] = {
+          statusType: 'GMEET2',
+          isAvailable: true,
+          isApproved: false,
+          room: 'gmeet2',
+          zoomBooking,
+          gmeetBooking,
+          statusText: 'Google Meet 2',
           hasPending: Boolean(pendingBooking),
           pendingBooking,
         };
       } else if (zoomBooking) {
-        // Zoom terisi, dialihkan ke Google Meet
+        // Zoom terisi, dialihkan ke Google Meet 1
         map[slot.label] = {
           statusType: 'GMEET',
           isAvailable: true,
           isApproved: false,
           room: 'gmeet',
           zoomBooking,
-          statusText: 'Google Meet',
+          statusText: 'Google Meet 1',
           hasPending: Boolean(pendingBooking),
           pendingBooking,
         };
@@ -228,7 +252,8 @@ export function RequestSlotModal({
   // Otomatis sinkronkan formData.room berdasarkan ketersediaan slot yang sedang dipilih
   useEffect(() => {
     if (formData.timeSlot && slotAvailability[formData.timeSlot]) {
-      const targetRoom = slotAvailability[formData.timeSlot].room === 'gmeet' ? 'gmeet' : 'zoom';
+      const avail = slotAvailability[formData.timeSlot];
+      const targetRoom = avail.room === 'gmeet2' ? 'gmeet2' : (avail.room === 'gmeet' ? 'gmeet' : 'zoom');
       if (formData.room !== targetRoom) {
         setFormData(prev => ({ ...prev, room: targetRoom }));
       }
@@ -266,7 +291,7 @@ export function RequestSlotModal({
             setFormData(prev => ({
               ...prev,
               timeSlot: slot.label,
-              room: info.room === 'gmeet' ? 'gmeet' : 'zoom',
+              room: info.room === 'gmeet2' ? 'gmeet2' : (info.room === 'gmeet' ? 'gmeet' : 'zoom'),
             }));
             setIsSlotDropdownOpen(false);
             slotTriggerRef.current?.focus();
@@ -329,8 +354,8 @@ export function RequestSlotModal({
       return {
         type: 'slot',
         isApproved: true,
-        title: 'Penuh · Zoom dan Google Meet terpakai',
-        message: `Kedua ruang (Zoom dan Google Meet) pada hari ${formData.day} (${formData.timeSlot} WIB) sudah terpakai oleh perkuliahan lain. Silakan pilih jam perkuliahan yang bertanda Tersedia.`,
+        title: 'Penuh · Zoom & 2 Google Meet terpakai',
+        message: `Ketiga ruang virtual (Zoom, Google Meet 1, dan Google Meet 2) pada hari ${formData.day} (${formData.timeSlot} WIB) sudah terpakai oleh perkuliahan lain. Silakan pilih jam perkuliahan yang bertanda Tersedia.`,
       };
     }
 
@@ -348,7 +373,7 @@ export function RequestSlotModal({
     if (!formData.note.trim() || !formData.requestedBy.trim()) return;
 
     const slotInfo = slotAvailability[formData.timeSlot];
-    const finalRoom = (slotInfo && slotInfo.room === 'gmeet') ? 'gmeet' : 'zoom';
+    const finalRoom = (slotInfo && (slotInfo.room === 'gmeet2' || slotInfo.room === 'gmeet')) ? slotInfo.room : 'zoom';
     const payload = { ...formData, room: finalRoom };
 
     setPendingPayload(payload);
@@ -424,18 +449,30 @@ export function RequestSlotModal({
           {/* Room Info */}
           <div className="mx-5 mb-4 p-3.5 rounded-xl border text-xs flex items-center gap-3 bg-slate-50 dark:bg-zinc-900/60 border-slate-200 dark:border-zinc-800">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-              submittedRoom === 'gmeet'
+              submittedRoom === 'gmeet2'
+                ? 'bg-emerald-100 dark:bg-emerald-900/40'
+                : submittedRoom === 'gmeet'
                 ? 'bg-teal-100 dark:bg-teal-900/40'
                 : 'bg-sky-100 dark:bg-sky-900/40'
             }`}>
-              <Video className={`w-4 h-4 ${ submittedRoom === 'gmeet' ? 'text-teal-600 dark:text-teal-400' : 'text-sky-600 dark:text-sky-400'}`} />
+              <Video className={`w-4 h-4 ${
+                submittedRoom === 'gmeet2' ? 'text-emerald-600 dark:text-emerald-400' :
+                submittedRoom === 'gmeet' ? 'text-teal-600 dark:text-teal-400' : 
+                'text-sky-600 dark:text-sky-400'
+              }`} />
             </div>
             <div className="flex-1">
               <p className="font-semibold text-slate-700 dark:text-zinc-200">
-                {submittedRoom === 'gmeet' ? 'Google Meet' : 'Zoom'}
+                {submittedRoom === 'gmeet2' ? 'Google Meet Ruang 2' : (submittedRoom === 'gmeet' ? 'Google Meet Ruang 1' : 'Zoom')}
               </p>
-              <p className={`text-[10.5px] mt-0.5 ${ submittedRoom === 'gmeet' ? 'text-teal-700 dark:text-teal-400' : 'text-sky-700 dark:text-sky-400'}`}>
-                {submittedRoom === 'gmeet'
+              <p className={`text-[10.5px] mt-0.5 ${
+                submittedRoom === 'gmeet2' ? 'text-emerald-700 dark:text-emerald-400' :
+                submittedRoom === 'gmeet' ? 'text-teal-700 dark:text-teal-400' : 
+                'text-sky-700 dark:text-sky-400'
+              }`}>
+                {submittedRoom === 'gmeet2'
+                  ? 'Dialihkan karena Zoom & Meet 1 jam ini sudah terisi'
+                  : submittedRoom === 'gmeet'
                   ? 'Dialihkan karena Zoom jam ini sudah terisi'
                   : 'Ruang virtual utama perkuliahan'}
               </p>
@@ -632,7 +669,9 @@ export function RequestSlotModal({
                   {TIME_SLOTS.map((slot, index) => {
                     const info = slotAvailability[slot.label];
                     const isOccupied = info && !info.isAvailable;
-                    const isGmeet = info?.statusType === 'GMEET';
+                    const isGmeet1 = info?.statusType === 'GMEET';
+                    const isGmeet2 = info?.statusType === 'GMEET2';
+                    const isGmeet = isGmeet1 || isGmeet2;
                     const isSelected = formData.timeSlot === slot.label;
                     const isHighlighted = highlightedIndex === index;
 
@@ -649,7 +688,7 @@ export function RequestSlotModal({
                           setFormData(prev => ({
                             ...prev,
                             timeSlot: slot.label,
-                            room: info?.room === 'gmeet' ? 'gmeet' : 'zoom',
+                            room: info?.room === 'gmeet2' ? 'gmeet2' : (info?.room === 'gmeet' ? 'gmeet' : 'zoom'),
                           }));
                           setIsSlotDropdownOpen(false);
                           slotTriggerRef.current?.focus();
@@ -659,11 +698,15 @@ export function RequestSlotModal({
                           isOccupied
                             ? 'cursor-not-allowed bg-zinc-100/90 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700/60 text-zinc-700 dark:text-zinc-300'
                             : isSelected
-                            ? isGmeet
+                            ? isGmeet2
+                              ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-400 dark:border-teal-600 ring-2 ring-teal-500/20 text-teal-950 dark:text-teal-100'
+                              : isGmeet1
                               ? 'bg-sky-50 dark:bg-sky-950/60 border-sky-400 dark:border-sky-600 ring-2 ring-sky-500/20 text-sky-950 dark:text-sky-100'
                               : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-400 dark:border-emerald-600 ring-2 ring-emerald-500/20 text-emerald-950 dark:text-emerald-100'
                             : isHighlighted
-                            ? isGmeet
+                            ? isGmeet2
+                              ? 'bg-teal-50/50 dark:bg-teal-900/30 border-teal-200 dark:border-teal-800/60 text-zinc-900 dark:text-zinc-100'
+                              : isGmeet1
                               ? 'bg-sky-50/50 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800/60 text-zinc-900 dark:text-zinc-100'
                               : 'bg-emerald-50/50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800/60 text-zinc-900 dark:text-zinc-100'
                             : 'bg-white dark:bg-zinc-900 border-zinc-200/80 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-900 dark:text-zinc-100'
@@ -682,7 +725,9 @@ export function RequestSlotModal({
                           </span>
 
                           {isSelected && (
-                            <span className={`text-xs font-bold flex items-center gap-1 ${isGmeet ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            <span className={`text-xs font-bold flex items-center gap-1 ${
+                              isGmeet2 ? 'text-teal-600 dark:text-teal-400' : isGmeet1 ? 'text-sky-600 dark:text-sky-400' : 'text-emerald-600 dark:text-emerald-400'
+                            }`}>
                               <Check className="w-4 h-4 stroke-[2.5]" />
                               <span className="sr-only">Dipilih</span>
                             </span>
@@ -693,13 +738,23 @@ export function RequestSlotModal({
                         {isOccupied ? (
                           <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300">
                             <Ban className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" />
-                            <span>Penuh · Zoom dan Meet terpakai</span>
+                            <span>Penuh · Zoom & 2 Google Meet terpakai</span>
                           </div>
-                        ) : isGmeet ? (
+                        ) : isGmeet2 ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-300 dark:border-teal-800 shrink-0">
+                              <Video className="w-2.5 h-2.5 text-teal-600 dark:text-teal-400" />
+                              <span>Google Meet 2</span>
+                            </span>
+                            <span className="text-[11px] font-semibold text-teal-700 dark:text-teal-300">
+                              Tersedia
+                            </span>
+                          </div>
+                        ) : isGmeet1 ? (
                           <div className="flex items-center gap-2 mt-1">
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300 dark:border-sky-800 shrink-0">
                               <Video className="w-2.5 h-2.5 text-sky-600 dark:text-sky-400" />
-                              <span>Google Meet</span>
+                              <span>Google Meet 1</span>
                             </span>
                             <span className="text-[11px] font-semibold text-sky-700 dark:text-sky-300">
                               Tersedia
@@ -717,8 +772,13 @@ export function RequestSlotModal({
                           </div>
                         )}
 
-                        {/* Baris 3 (khusus Google Meet): "Zoom dipakai Angk. XXXX", boleh wrap ke baris berikutnya, tidak boleh terpotong */}
-                        {!isOccupied && isGmeet && (
+                        {/* Baris 3 (khusus Google Meet): info pengalihan */}
+                        {!isOccupied && isGmeet2 && (
+                          <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal mt-1 break-words">
+                            Zoom & Meet 1 terpakai · Dialihkan ke Google Meet Ruang 2
+                          </p>
+                        )}
+                        {!isOccupied && isGmeet1 && (
                           <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-normal mt-1 break-words">
                             Zoom dipakai Angk. {info.zoomBooking?.batch || '-'}{info.zoomBooking?.note ? ` · ${info.zoomBooking.note}` : ''}
                           </p>
@@ -751,10 +811,22 @@ export function RequestSlotModal({
                     <div className="mt-2 p-3 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800/60 text-xs text-sky-950 dark:text-sky-100 space-y-1">
                       <div className="flex items-center gap-1.5 font-bold text-sky-900 dark:text-sky-200">
                         <Video className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
-                        <span>Kuliah Anda akan memakai Google Meet</span>
+                        <span>Kuliah Anda akan memakai Google Meet Ruang 1</span>
                       </div>
                       <p className="text-[11.5px] text-sky-800/90 dark:text-sky-300 leading-relaxed">
-                        Zoom pada jam ini dipakai Angkatan {slotAvailability[formData.timeSlot].zoomBooking?.batch || '-'}{slotAvailability[formData.timeSlot].zoomBooking?.note ? ` (${slotAvailability[formData.timeSlot].zoomBooking.note})` : ''}. Link Meet Fikes sudah siap dan sama sahnya untuk perkuliahan. Tautan dikirim ke email Anda setelah admin menyetujui.
+                        Zoom pada jam ini dipakai Angkatan {slotAvailability[formData.timeSlot].zoomBooking?.batch || '-'}{slotAvailability[formData.timeSlot].zoomBooking?.note ? ` (${slotAvailability[formData.timeSlot].zoomBooking.note})` : ''}. Link Google Meet Fikes sudah siap dan sama sahnya untuk perkuliahan. Tautan dikirim ke email Anda setelah admin menyetujui.
+                      </p>
+                    </div>
+                  )}
+
+                  {slotAvailability[formData.timeSlot].statusType === 'GMEET2' && (
+                    <div className="mt-2 p-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/60 text-xs text-teal-950 dark:text-teal-100 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-teal-900 dark:text-teal-200">
+                        <Video className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                        <span>Kuliah Anda akan memakai Google Meet Ruang 2</span>
+                      </div>
+                      <p className="text-[11.5px] text-teal-800/90 dark:text-teal-300 leading-relaxed">
+                        Zoom & Google Meet 1 pada jam ini sudah dipakai perkuliahan lain. Link Google Meet Ruang 2 Fikes sudah siap dan sama sahnya untuk perkuliahan. Tautan dikirim ke email Anda setelah admin menyetujui.
                       </p>
                     </div>
                   )}
@@ -762,7 +834,7 @@ export function RequestSlotModal({
                   {slotAvailability[formData.timeSlot].statusType === 'FULL' && (
                     <div className="flex items-start gap-2 mt-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-xs text-rose-800 dark:text-rose-300 font-medium">
                       <Ban className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                      <span>Penuh · Zoom dan Meet terpakai pada jam ini. Silakan pilih jam lain.</span>
+                      <span>Penuh · Zoom dan kedua ruang Google Meet terpakai pada jam ini. Silakan pilih jam lain.</span>
                     </div>
                   )}
 
@@ -1101,7 +1173,7 @@ export function RequestSlotModal({
               { label: 'Dosen / PIC', value: pendingPayload.pic || '-' },
               {
                 label: 'Ruang',
-                value: pendingPayload.room === 'gmeet' ? 'Google Meet' : 'Zoom',
+                value: pendingPayload.room === 'gmeet2' ? 'Google Meet Ruang 2' : (pendingPayload.room === 'gmeet' ? 'Google Meet Ruang 1' : 'Zoom'),
                 isRoom: true,
                 room: pendingPayload.room,
               },
@@ -1112,9 +1184,11 @@ export function RequestSlotModal({
                 <span className="text-[11px] text-zinc-500 dark:text-zinc-400 w-28 flex-shrink-0 pt-0.5">{label}</span>
                 <span className={`text-[11.5px] flex-1 leading-snug ${
                   isRoom
-                    ? room === 'gmeet'
+                    ? room === 'gmeet2'
                       ? 'font-bold text-teal-700 dark:text-teal-300'
-                      : 'font-bold text-sky-700 dark:text-sky-300'
+                      : room === 'gmeet'
+                      ? 'font-bold text-sky-700 dark:text-sky-300'
+                      : 'font-bold text-emerald-700 dark:text-emerald-300'
                     : bold
                     ? 'font-semibold text-zinc-900 dark:text-zinc-100'
                     : 'text-zinc-800 dark:text-zinc-200'
@@ -1123,9 +1197,11 @@ export function RequestSlotModal({
                     <Video className="w-3 h-3 inline-block mr-1 -mt-0.5" />
                   )}
                   {value}
-                  {isRoom && room === 'gmeet' && (
+                  {isRoom && (room === 'gmeet' || room === 'gmeet2') && (
                     <span className="block text-[10px] text-teal-600 dark:text-teal-400 font-normal mt-0.5">
-                      (Ruang Zoom jam ini sudah terisi, dialihkan ke Google Meet)
+                      {room === 'gmeet2'
+                        ? '(Ruang Zoom & Meet 1 sudah terisi, dialihkan ke Google Meet 2)'
+                        : '(Ruang Zoom jam ini sudah terisi, dialihkan ke Google Meet 1)'}
                     </span>
                   )}
                 </span>

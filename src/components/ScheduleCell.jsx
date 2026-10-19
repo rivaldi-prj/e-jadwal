@@ -25,7 +25,9 @@ function BookingCard({
   isCompact = false,
 }) {
   const isPending = (booking?.status || BOOKING_STATUS.APPROVED) === BOOKING_STATUS.PENDING;
-  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet2 = (booking?.room || 'zoom') === 'gmeet2';
+  const isGmeet1 = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet = isGmeet1 || isGmeet2;
 
   const batchInfo = booking
     ? BATCHES.find(b => b.id === booking.batch) || {
@@ -48,10 +50,11 @@ function BookingCard({
   };
 
   if (isPending) {
+    const roomTitle = isGmeet2 ? 'Google Meet 2' : isGmeet1 ? 'Google Meet 1' : 'Zoom';
     return (
       <div
         onClick={handleClick}
-        title={`[MENUNGGU PERSETUJUAN]\n${booking.note || 'Perkuliahan'}\nRuang: ${isGmeet ? 'Google Meet' : 'Zoom'}\nPemohon: ${booking.requestedBy || '-'}\nDosen: ${booking.pic || '-'}\n(Klik untuk setujui/tolak)`}
+        title={`[MENUNGGU PERSETUJUAN]\n${booking.note || 'Perkuliahan'}\nRuang: ${roomTitle}\nPemohon: ${booking.requestedBy || '-'}\nDosen: ${booking.pic || '-'}\n(Klik untuk setujui/tolak)`}
         className={`group relative p-2.5 sm:p-3 rounded-2xl bg-amber-100/90 dark:bg-amber-950/50 text-amber-950 dark:text-amber-100 shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
           } ${isPast ? 'opacity-50 grayscale-[30%]' : ''}`}
       >
@@ -76,9 +79,13 @@ function BookingCard({
               {slot.label} WIB
             </span>
           </div>
-          {isGmeet ? (
+          {isGmeet2 ? (
+            <span className="text-[8.5px] font-bold px-1.5 py-0.2 rounded bg-emerald-200/80 text-emerald-950 inline-flex items-center gap-0.5">
+              <Video className="w-2.5 h-2.5" /> Meet 2
+            </span>
+          ) : isGmeet1 ? (
             <span className="text-[8.5px] font-bold px-1.5 py-0.2 rounded bg-teal-200/80 text-teal-900 inline-flex items-center gap-0.5">
-              <Video className="w-2.5 h-2.5" /> Google Meet
+              <Video className="w-2.5 h-2.5" /> Meet 1
             </span>
           ) : (
             <span className="text-[8.5px] font-bold px-1.5 py-0.2 rounded bg-sky-200/80 text-sky-900">
@@ -108,10 +115,11 @@ function BookingCard({
   }
 
   // Approved Booking Card
+  const approvedRoomTitle = isGmeet2 ? 'Google Meet Ruang 2' : isGmeet1 ? 'Google Meet Ruang 1' : 'Zoom Kebidanan';
   return (
     <div
       onClick={handleClick}
-      title={`${booking.note || 'Perkuliahan'}\nRuang: ${isGmeet ? 'Google Meet' : 'Zoom Kebidanan'}\nDosen: ${booking.pic || '-'}\nAngkatan: ${booking.batch}\n(Klik untuk detail)`}
+      title={`${booking.note || 'Perkuliahan'}\nRuang: ${approvedRoomTitle}\nDosen: ${booking.pic || '-'}\nAngkatan: ${booking.batch}\n(Klik untuk detail)`}
       className={`group relative p-2.5 sm:p-3 rounded-2xl ${batchInfo?.cardBg || ''} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer flex flex-col justify-between ${isCompact ? 'min-h-[90px]' : 'min-h-[110px] sm:min-h-[120px]'
         } ${isLiveNow ? 'ring-2 ring-emerald-500 shadow-md z-10' : ''} ${isPast ? 'opacity-55 grayscale-[20%] saturate-50' : ''}`}
     >
@@ -166,12 +174,19 @@ function BookingCard({
             {slot.label} WIB
           </span>
         </div>
-        {isGmeet ? (
+        {isGmeet2 ? (
           <span
-            title="Ruang Google Meet Resmi"
+            title="Ruang Google Meet Ruang 2 Resmi"
+            className="inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-600 dark:bg-emerald-600 text-white shadow-2xs tracking-tight"
+          >
+            <Video className="w-2.5 h-2.5" /> Meet 2
+          </span>
+        ) : isGmeet1 ? (
+          <span
+            title="Ruang Google Meet Ruang 1 Resmi"
             className="inline-flex items-center gap-0.5 text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-teal-600 dark:bg-teal-600 text-white shadow-2xs tracking-tight"
           >
-            <Video className="w-2.5 h-2.5" /> Google Meet
+            <Video className="w-2.5 h-2.5" /> Meet 1
           </span>
         ) : (
           <span

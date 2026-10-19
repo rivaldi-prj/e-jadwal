@@ -47,21 +47,26 @@ CREATE TABLE IF NOT EXISTS public.zoom_config (
     meeting_id TEXT NOT NULL,
     passcode TEXT NOT NULL,
     gmeet_url TEXT DEFAULT 'https://meet.google.com/kqe-reho-vbd',
+    gmeet_url_2 TEXT DEFAULT 'https://meet.google.com/ftf-cowm-irj',
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 ALTER TABLE public.zoom_config ADD COLUMN IF NOT EXISTS gmeet_url TEXT DEFAULT 'https://meet.google.com/kqe-reho-vbd';
+ALTER TABLE public.zoom_config ADD COLUMN IF NOT EXISTS gmeet_url_2 TEXT DEFAULT 'https://meet.google.com/ftf-cowm-irj';
 
 -- Masukkan Konfigurasi Akun Zoom Bawaan S1 Kebidanan
-INSERT INTO public.zoom_config (id, name, join_url, meeting_id, passcode, gmeet_url)
+INSERT INTO public.zoom_config (id, name, join_url, meeting_id, passcode, gmeet_url, gmeet_url_2)
 VALUES (
     1,
     'ZOOM KEBIDANAN',
     'https://zoom.us/j/91053222846?pwd=IVBzhDahrYwKkOZtl80RS88eZH1JzE.1',
     '910 5322 2846',
     '433452',
-    'https://meet.google.com/kqe-reho-vbd'
+    'https://meet.google.com/kqe-reho-vbd',
+    'https://meet.google.com/ftf-cowm-irj'
 )
-ON CONFLICT (id) DO UPDATE SET gmeet_url = EXCLUDED.gmeet_url WHERE public.zoom_config.gmeet_url IS NULL;
+ON CONFLICT (id) DO UPDATE SET 
+    gmeet_url = COALESCE(public.zoom_config.gmeet_url, EXCLUDED.gmeet_url),
+    gmeet_url_2 = COALESCE(public.zoom_config.gmeet_url_2, EXCLUDED.gmeet_url_2);
 
 -- 3. Aktifkan Keamanan Row Level Security (RLS)
 ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;

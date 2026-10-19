@@ -204,8 +204,22 @@ export function TrackRequestsModal({
                 const isPending = item.status === BOOKING_STATUS.PENDING;
                 const isApproved = item.status === BOOKING_STATUS.APPROVED;
                 const isRejected = item.status === BOOKING_STATUS.REJECTED;
-                const isGmeet = (item.room || 'zoom') === 'gmeet';
-                const gmeetLink = zoomConfig?.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd';
+                const isGmeet2 = (item.room || 'zoom') === 'gmeet2';
+                const isGmeet1 = (item.room || 'zoom') === 'gmeet';
+                const isGmeet = isGmeet1 || isGmeet2;
+                const gmeetLink = isGmeet2
+                  ? (zoomConfig?.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj')
+                  : (zoomConfig?.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd');
+                const roomDisplayName = isGmeet2
+                  ? 'Google Meet Ruang 2'
+                  : isGmeet1
+                  ? 'Google Meet Ruang 1'
+                  : 'Zoom';
+                const roomShortName = isGmeet2
+                  ? 'Meet 2'
+                  : isGmeet1
+                  ? 'Meet 1'
+                  : 'Zoom';
 
                 return (
                   <div
@@ -214,9 +228,11 @@ export function TrackRequestsModal({
                       isRejected
                         ? 'border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20'
                         : isApproved
-                        ? isGmeet
+                        ? isGmeet2
+                          ? 'border-emerald-300 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-emerald-950/20'
+                          : isGmeet1
                           ? 'border-teal-200 dark:border-teal-900/50 bg-teal-50/30 dark:bg-teal-950/20'
-                          : 'border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-emerald-950/20'
+                          : 'border-blue-200 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/20'
                         : 'border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20'
                     }`}
                   >
@@ -227,12 +243,14 @@ export function TrackRequestsModal({
                           Angkatan {item.batch}
                         </span>
                         <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold inline-flex items-center gap-1 ${
-                          isGmeet
+                          isGmeet2
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : isGmeet1
                             ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
                             : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
                         }`}>
                           {isGmeet && <Video className="w-2.5 h-2.5" />}
-                          <span>{isGmeet ? 'Google Meet' : 'Zoom'}</span>
+                          <span>{roomShortName}</span>
                         </span>
                         <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-zinc-400" />
@@ -250,9 +268,11 @@ export function TrackRequestsModal({
                         )}
                         {isApproved && (
                           <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
-                            isGmeet
+                            isGmeet2
+                              ? 'text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700'
+                              : isGmeet1
                               ? 'text-teal-800 dark:text-teal-200 bg-teal-100 dark:bg-teal-900/60 border-teal-300 dark:border-teal-700'
-                              : 'text-emerald-800 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 border-emerald-300 dark:border-emerald-700'
+                              : 'text-sky-800 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/60 border-sky-300 dark:border-sky-700'
                           }`}>
                             <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                             <span>Disetujui</span>
@@ -309,25 +329,39 @@ export function TrackRequestsModal({
                       <div className="space-y-2.5">
                         {isGmeet ? (
                           <>
-                            <div className="p-2.5 rounded-lg bg-teal-100/60 dark:bg-teal-950/40 border border-teal-300/80 dark:border-teal-800 text-xs text-teal-800 dark:text-teal-300 flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-teal-600 flex-shrink-0" />
-                              <span>Pengajuan menggunakan <strong>Google Meet</strong> karena ruang Zoom pada jam ini telah digunakan.</span>
+                            <div className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 ${
+                              isGmeet2
+                                ? 'bg-emerald-100/60 dark:bg-emerald-950/40 border-emerald-300/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                                : 'bg-teal-100/60 dark:bg-teal-950/40 border-teal-300/80 dark:border-teal-800 text-teal-800 dark:text-teal-300'
+                            }`}>
+                              <CheckCircle2 className={`w-4 h-4 flex-shrink-0 ${isGmeet2 ? 'text-emerald-600' : 'text-teal-600'}`} />
+                              <span>Pengajuan menggunakan <strong>{roomDisplayName}</strong> karena ruang utama pada jam ini telah digunakan.</span>
                             </div>
 
-                            <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-teal-300 dark:border-teal-800/80 shadow-2xs space-y-2.5">
+                            <div className={`p-3 rounded-xl bg-white dark:bg-zinc-900 border shadow-2xs space-y-2.5 ${
+                              isGmeet2 ? 'border-emerald-300 dark:border-emerald-800/80' : 'border-teal-300 dark:border-teal-800/80'
+                            }`}>
                               <div className="flex items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
-                                <span className="text-[11px] font-bold text-teal-800 dark:text-teal-300 flex items-center gap-1.5">
-                                  <Video className="w-3.5 h-3.5 text-teal-600" />
-                                  <span>Akses Google Meet (Khusus Pemohon)</span>
+                                <span className={`text-[11px] font-bold flex items-center gap-1.5 ${
+                                  isGmeet2 ? 'text-emerald-800 dark:text-emerald-300' : 'text-teal-800 dark:text-teal-300'
+                                }`}>
+                                  <Video className={`w-3.5 h-3.5 ${isGmeet2 ? 'text-emerald-600' : 'text-teal-600'}`} />
+                                  <span>Akses {roomDisplayName} (Khusus Pemohon)</span>
                                 </span>
                                 <span className="text-[10px] text-zinc-400">
                                   Bagikan ke dosen & grup kelas
                                 </span>
                               </div>
 
-                              <div className="p-2.5 rounded-lg bg-teal-50/60 dark:bg-zinc-800/80 border border-teal-200/80 dark:border-zinc-700/80">
-                                <div className="text-[10px] text-zinc-400 font-medium mb-1">Tautan Google Meet</div>
-                                <div className="font-mono text-xs font-semibold text-teal-700 dark:text-teal-300 break-all">
+                              <div className={`p-2.5 rounded-lg border ${
+                                isGmeet2
+                                  ? 'bg-emerald-50/60 dark:bg-zinc-800/80 border-emerald-200/80 dark:border-zinc-700/80'
+                                  : 'bg-teal-50/60 dark:bg-zinc-800/80 border-teal-200/80 dark:border-zinc-700/80'
+                              }`}>
+                                <div className="text-[10px] text-zinc-400 font-medium mb-1">Tautan {roomDisplayName}</div>
+                                <div className={`font-mono text-xs font-semibold break-all ${
+                                  isGmeet2 ? 'text-emerald-700 dark:text-emerald-300' : 'text-teal-700 dark:text-teal-300'
+                                }`}>
                                   {gmeetLink}
                                 </div>
                               </div>
@@ -337,10 +371,12 @@ export function TrackRequestsModal({
                                   href={gmeetLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-2xs transition-colors cursor-pointer"
+                                  className={`flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold text-white shadow-2xs transition-colors cursor-pointer ${
+                                    isGmeet2 ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-teal-600 hover:bg-teal-700'
+                                  }`}
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
-                                  <span>Buka Google Meet</span>
+                                  <span>Buka {roomDisplayName}</span>
                                 </a>
                                 <button
                                   type="button"

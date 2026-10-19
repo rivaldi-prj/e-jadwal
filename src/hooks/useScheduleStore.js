@@ -303,8 +303,9 @@ export function useScheduleStore() {
           }
 
           const mapped = remoteBookings.map((b) => {
+            const hasGmeet2Tag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet2]');
             const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
-            const room = b.room || (hasGmeetTag ? 'gmeet' : null) || localRoomMap.get(b.id) || 'zoom';
+            const room = b.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || localRoomMap.get(b.id) || 'zoom';
             return {
               id: b.id,
               day: b.day,
@@ -318,7 +319,7 @@ export function useScheduleStore() {
               requesterEmail: b.requester_email || '',
               requestedAt: b.requested_at || null,
               approvedAt: b.approved_at || null,
-              rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
+              rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
               room,
             };
           });
@@ -356,6 +357,7 @@ export function useScheduleStore() {
             meetingId: remoteConfig.meeting_id,
             passcode: remoteConfig.passcode,
             gmeetUrl: remoteConfig.gmeet_url || remoteConfig.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
+            gmeetUrl2: remoteConfig.gmeet_url_2 || remoteConfig.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
           };
           setZoomConfig(mappedCfg);
           localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(mappedCfg));
@@ -375,6 +377,7 @@ export function useScheduleStore() {
             (payload) => {
               if (!isMounted) return;
               if (payload.eventType === 'INSERT') {
+                const hasGmeet2Tag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet2]');
                 const hasGmeetTag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet]');
                 const newB = {
                   id: payload.new.id,
@@ -389,13 +392,13 @@ export function useScheduleStore() {
                   requesterEmail: payload.new.requester_email || '',
                   requestedAt: payload.new.requested_at || null,
                   approvedAt: payload.new.approved_at || null,
-                  rejectReason: (payload.new.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
-                  room: payload.new.room || (hasGmeetTag ? 'gmeet' : null) || 'zoom',
+                  rejectReason: (payload.new.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
+                  room: payload.new.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom',
                 };
                 setBookings((prev) => {
                   const existingLocal = prev.find((b) => b.id === newB.id);
                   if (existingLocal) {
-                    if (!payload.new.room && !hasGmeetTag && existingLocal.room) {
+                    if (!payload.new.room && !hasGmeetTag && !hasGmeet2Tag && existingLocal.room) {
                       newB.room = existingLocal.room;
                     }
                     return prev;
@@ -405,6 +408,7 @@ export function useScheduleStore() {
                   return next;
                 });
               } else if (payload.eventType === 'UPDATE') {
+                const hasGmeet2Tag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet2]');
                 const hasGmeetTag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet]');
                 const updatedB = {
                   id: payload.new.id,
@@ -419,12 +423,12 @@ export function useScheduleStore() {
                   requesterEmail: payload.new.requester_email || '',
                   requestedAt: payload.new.requested_at || null,
                   approvedAt: payload.new.approved_at || null,
-                  rejectReason: (payload.new.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
-                  room: payload.new.room || (hasGmeetTag ? 'gmeet' : null) || 'zoom',
+                  rejectReason: (payload.new.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
+                  room: payload.new.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom',
                 };
                 setBookings((prev) => {
                   const existingLocal = prev.find((b) => b.id === updatedB.id);
-                  if (!payload.new.room && !hasGmeetTag && existingLocal?.room) {
+                  if (!payload.new.room && !hasGmeetTag && !hasGmeet2Tag && existingLocal?.room) {
                     updatedB.room = existingLocal.room;
                   }
                   const next = prev.map((b) => (b.id === updatedB.id ? updatedB : b));
@@ -456,6 +460,7 @@ export function useScheduleStore() {
                   meetingId: payload.new.meeting_id,
                   passcode: payload.new.passcode,
                   gmeetUrl: payload.new.gmeet_url || payload.new.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
+                  gmeetUrl2: payload.new.gmeet_url_2 || payload.new.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
                 };
                 setZoomConfig(mappedCfg);
                 localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(mappedCfg));
@@ -489,8 +494,9 @@ export function useScheduleStore() {
         const { data: pollData } = await client.from('bookings').select('*').order('day');
         if (isMounted && pollData) {
           const mapped = pollData.map((b) => {
+            const hasGmeet2Tag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet2]');
             const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
-            const room = b.room || (hasGmeetTag ? 'gmeet' : null) || 'zoom';
+            const room = b.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom';
             return {
               id: b.id,
               day: b.day,
@@ -504,7 +510,7 @@ export function useScheduleStore() {
               requesterEmail: b.requester_email || '',
               requestedAt: b.requested_at || null,
               approvedAt: b.approved_at || null,
-              rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
+              rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
               room,
             };
           });
@@ -524,8 +530,9 @@ export function useScheduleStore() {
           const { data: visData } = await client.from('bookings').select('*').order('day');
           if (isMounted && visData) {
             const mapped = visData.map((b) => {
+              const hasGmeet2Tag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet2]');
               const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
-              const room = b.room || (hasGmeetTag ? 'gmeet' : null) || 'zoom';
+              const room = b.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom';
               return {
                 id: b.id,
                 day: b.day,
@@ -539,7 +546,7 @@ export function useScheduleStore() {
                 requesterEmail: b.requester_email || '',
                 requestedAt: b.requested_at || null,
                 approvedAt: b.approved_at || null,
-                rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet]', '').trim(),
+                rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
                 room,
               };
             });
@@ -617,11 +624,12 @@ export function useScheduleStore() {
       const bookingRoom = booking.room || 'zoom';
       const existingRoom = existing.room || 'zoom';
       if (bookingRoom === existingRoom) {
+        const roomName = bookingRoom === 'gmeet2' ? 'Google Meet Ruang 2' : (bookingRoom === 'gmeet' ? 'Google Meet Ruang 1' : 'Zoom');
         return {
           hasCollision: true,
           type: 'ROOM_CONFLICT',
           existing,
-          message: `Ruang ${bookingRoom === 'gmeet' ? 'Google Meet' : 'Zoom'} pada hari ${booking.day} (${booking.timeSlot}) sudah digunakan oleh Angkatan ${existing.batch} (${existing.note || 'Kegiatan Perkuliahan'}).`,
+          message: `Ruang ${roomName} pada hari ${booking.day} (${booking.timeSlot}) sudah digunakan oleh Angkatan ${existing.batch} (${existing.note || 'Kegiatan Perkuliahan'}).`,
         };
       }
     }
@@ -694,7 +702,9 @@ export function useScheduleStore() {
         let { error } = await client.from('bookings').insert(payload);
         if (error && (error.message?.includes('room') || error.code === 'PGRST204')) {
           delete payload.room;
-          if (newBooking.room === 'gmeet') {
+          if (newBooking.room === 'gmeet2') {
+            payload.reject_reason = '[ROOM:gmeet2]';
+          } else if (newBooking.room === 'gmeet') {
             payload.reject_reason = '[ROOM:gmeet]';
           }
           await client.from('bookings').insert(payload);
@@ -736,7 +746,7 @@ export function useScheduleStore() {
       }
     }
 
-    // B. Cek ketersediaan ruang Zoom vs Google Meet di hari & jam tersebut
+    // B. Cek ketersediaan ruang Zoom vs Google Meet 1 vs Google Meet 2 di hari & jam tersebut
     const isApprovedBooking = (b) => {
       const s = (b.status || BOOKING_STATUS.APPROVED).toLowerCase();
       return s === 'approved' || s === 'disetujui';
@@ -756,30 +766,41 @@ export function useScheduleStore() {
       return isApprovedBooking(b) && room === 'gmeet' && checkSlotsOverlap(bookingData.timeSlot, b.timeSlot);
     });
 
+    const gmeet2Occupied = bookings.find(b => {
+      if (b.status === BOOKING_STATUS.REJECTED || b.status === 'ditolak') return false;
+      if (b.day !== bookingData.day) return false;
+      const room = b.room || 'zoom';
+      return isApprovedBooking(b) && room === 'gmeet2' && checkSlotsOverlap(bookingData.timeSlot, b.timeSlot);
+    });
+
     // ── ATURAN ALOKASI RUANG VIRTUAL ──
     // 1. Zoom SELALU menjadi prioritas utama untuk semua pengajuan jika slot Zoom masih kosong.
-    // 2. Google Meet HANYA dialokasikan jika slot Zoom pada jam tersebut sudah terisi perkuliahan lain.
-    // 3. Jika kedua ruang (Zoom & Meet) sudah terisi, tolak dengan pesan bahwa slot penuh.
-    let assignedRoom = bookingData.room === 'gmeet' ? 'gmeet' : 'zoom';
+    // 2. Google Meet 1 dialokasikan jika slot Zoom pada jam tersebut sudah terisi perkuliahan lain.
+    // 3. Google Meet 2 dialokasikan jika slot Zoom dan Google Meet 1 sudah terisi perkuliahan lain.
+    // 4. Jika ketiga ruang (Zoom, Meet 1, Meet 2) sudah terisi, tolak dengan pesan bahwa slot penuh.
+    let assignedRoom = bookingData.room || 'zoom';
     if (zoomApproved) {
       if (!gmeetOccupied) {
         assignedRoom = 'gmeet';
+      } else if (!gmeet2Occupied) {
+        assignedRoom = 'gmeet2';
       } else {
         return {
           success: false,
-          message: `Kedua ruang virtual (Zoom dan Google Meet) pada hari ${bookingData.day} (${bookingData.timeSlot} WIB) sudah terisi penuh. Silakan pilih jam atau hari lain.`,
+          message: `Semua ruang virtual (Zoom, Google Meet 1, dan Google Meet 2) pada hari ${bookingData.day} (${bookingData.timeSlot} WIB) sudah terisi penuh. Silakan pilih jam atau hari lain.`,
         };
       }
+    } else if (assignedRoom === 'gmeet' && gmeetOccupied) {
+      assignedRoom = !gmeet2Occupied ? 'gmeet2' : 'zoom';
+    } else if (assignedRoom === 'gmeet2' && gmeet2Occupied) {
+      assignedRoom = !zoomApproved ? 'zoom' : (!gmeetOccupied ? 'gmeet' : 'gmeet2');
     }
 
     const now = new Date().toISOString();
 
     // ── AUTO-APPROVE LOGIC ──
-    // Jika slot sepenuhnya kosong (tidak ada konflik sama sekali),
-    // pengajuan langsung disetujui tanpa perlu antrian manual.
-    // Hanya pengajuan yang benar-benar konflik yang masuk antrian PENDING.
-    const bothRoomsFull = zoomApproved && gmeetOccupied;
-    const canAutoApprove = !bothRoomsFull; // setidaknya satu ruang masih kosong
+    const allRoomsFull = zoomApproved && gmeetOccupied && gmeet2Occupied;
+    const canAutoApprove = !allRoomsFull; // setidaknya satu ruang masih kosong
     const autoApproveStatus = canAutoApprove ? BOOKING_STATUS.APPROVED : BOOKING_STATUS.PENDING;
 
     const newBooking = {
@@ -817,7 +838,9 @@ export function useScheduleStore() {
         let { error: insErr } = await client.from('bookings').insert(insertPayload);
         if (insErr && (insErr.message?.includes('room') || insErr.code === 'PGRST204')) {
           delete insertPayload.room;
-          if (newBooking.room === 'gmeet') {
+          if (newBooking.room === 'gmeet2') {
+            insertPayload.reject_reason = '[ROOM:gmeet2]';
+          } else if (newBooking.room === 'gmeet') {
             insertPayload.reject_reason = '[ROOM:gmeet]';
           }
           const retry = await client.from('bookings').insert(insertPayload);
@@ -914,11 +937,23 @@ export function useScheduleStore() {
     // Cek collision saat approve
     let collision = checkCollision({ ...target, room: effectiveRoom, id });
     if (collision.hasCollision) {
-      // Jika bentrok ruang Zoom, cek apakah Google Meet kosong
+      // Jika bentrok ruang Zoom, cek apakah Google Meet 1 kosong, lalu Google Meet 2
       if (collision.type === 'ROOM_CONFLICT' && effectiveRoom === 'zoom') {
-        const meetCollision = checkCollision({ ...target, room: 'gmeet', id });
-        if (!meetCollision.hasCollision) {
+        const meet1Collision = checkCollision({ ...target, room: 'gmeet', id });
+        if (!meet1Collision.hasCollision) {
           effectiveRoom = 'gmeet';
+          collision = { hasCollision: false };
+        } else {
+          const meet2Collision = checkCollision({ ...target, room: 'gmeet2', id });
+          if (!meet2Collision.hasCollision) {
+            effectiveRoom = 'gmeet2';
+            collision = { hasCollision: false };
+          }
+        }
+      } else if (collision.type === 'ROOM_CONFLICT' && effectiveRoom === 'gmeet') {
+        const meet2Collision = checkCollision({ ...target, room: 'gmeet2', id });
+        if (!meet2Collision.hasCollision) {
+          effectiveRoom = 'gmeet2';
           collision = { hasCollision: false };
         }
       }
@@ -941,7 +976,9 @@ export function useScheduleStore() {
         let { error: upErr } = await client.from('bookings').update(updatePayload).eq('id', id);
         if (upErr && (upErr.message?.includes('room') || upErr.code === 'PGRST204')) {
           delete updatePayload.room;
-          if (effectiveRoom === 'gmeet') {
+          if (effectiveRoom === 'gmeet2') {
+            updatePayload.reject_reason = '[ROOM:gmeet2]';
+          } else if (effectiveRoom === 'gmeet') {
             updatePayload.reject_reason = '[ROOM:gmeet]';
           } else {
             updatePayload.reject_reason = '';
@@ -1072,7 +1109,9 @@ export function useScheduleStore() {
         let { error: uErr } = await client.from('bookings').update(updatePayload).eq('id', id);
         if (uErr && (uErr.message?.includes('room') || uErr.code === 'PGRST204')) {
           delete updatePayload.room;
-          if (updatedBooking.room === 'gmeet') {
+          if (updatedBooking.room === 'gmeet2') {
+            updatePayload.reject_reason = '[ROOM:gmeet2]';
+          } else if (updatedBooking.room === 'gmeet') {
             updatePayload.reject_reason = '[ROOM:gmeet]';
           } else {
             updatePayload.reject_reason = '';
@@ -1132,6 +1171,7 @@ export function useScheduleStore() {
       ...zoomConfig,
       ...newConfig,
       gmeetUrl: (newConfig.gmeetUrl || zoomConfig.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl).trim(),
+      gmeetUrl2: (newConfig.gmeetUrl2 || zoomConfig.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2).trim(),
     };
     setZoomConfig(updated);
     localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(updated));
@@ -1148,9 +1188,15 @@ export function useScheduleStore() {
           meeting_id: updated.meetingId,
           passcode: updated.passcode,
           gmeet_url: updated.gmeetUrl,
+          gmeet_url_2: updated.gmeetUrl2,
           updated_at: new Date().toISOString(),
         };
-        const { error } = await client.from('zoom_config').upsert(payload);
+        let { error } = await client.from('zoom_config').upsert(payload);
+        if (error && error.message?.includes('gmeet_url_2')) {
+          delete payload.gmeet_url_2;
+          const retry = await client.from('zoom_config').upsert(payload);
+          error = retry.error;
+        }
         if (error && error.message?.includes('gmeet_url')) {
           delete payload.gmeet_url;
           await client.from('zoom_config').upsert(payload);
@@ -1235,9 +1281,15 @@ export function useScheduleStore() {
         meeting_id: zoomConfig.meetingId,
         passcode: zoomConfig.passcode,
         gmeet_url: zoomConfig.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
+        gmeet_url_2: zoomConfig.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
         updated_at: new Date().toISOString(),
       };
       let { error: zErr } = await client.from('zoom_config').upsert(zoomPayload);
+      if (zErr && zErr.message?.includes('gmeet_url_2')) {
+        delete zoomPayload.gmeet_url_2;
+        const retry = await client.from('zoom_config').upsert(zoomPayload);
+        zErr = retry.error;
+      }
       if (zErr && zErr.message?.includes('gmeet_url')) {
         delete zoomPayload.gmeet_url;
         await client.from('zoom_config').upsert(zoomPayload);

@@ -127,35 +127,54 @@ export function DetailModal({
           </div>
 
           {/* Virtual Room Access Area */}
-          {(booking.room || 'zoom') === 'gmeet' ? (
+          {((booking.room || 'zoom') === 'gmeet' || booking.room === 'gmeet2') ? (
             isAdmin ? (
               <div className="space-y-3 pt-1">
-                <div className="p-3 rounded-xl bg-teal-50/90 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80">
-                  <div className="flex items-center gap-2 mb-1.5 text-teal-900 dark:text-teal-200 font-semibold text-xs">
-                    <Video className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                    <span>Ruang Google Meet (Admin)</span>
+                <div className={`p-3 rounded-xl border ${
+                  booking.room === 'gmeet2'
+                    ? 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/80'
+                    : 'bg-teal-50/90 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800/80'
+                }`}>
+                  <div className={`flex items-center gap-2 mb-1.5 font-semibold text-xs ${
+                    booking.room === 'gmeet2' ? 'text-emerald-900 dark:text-emerald-200' : 'text-teal-900 dark:text-teal-200'
+                  }`}>
+                    <Video className={`w-4 h-4 ${booking.room === 'gmeet2' ? 'text-emerald-600 dark:text-emerald-400' : 'text-teal-600 dark:text-teal-400'}`} />
+                    <span>{booking.room === 'gmeet2' ? 'Ruang Google Meet 2 (Admin)' : 'Ruang Google Meet 1 (Admin)'}</span>
                   </div>
-                  <p className="text-[11.5px] text-teal-800/90 dark:text-teal-300/90 leading-relaxed mb-3">
-                    Perkuliahan ini menggunakan Google Meet karena ruang Zoom sedang dipakai oleh sesi lain pada waktu yang sama.
+                  <p className={`text-[11.5px] leading-relaxed mb-3 ${
+                    booking.room === 'gmeet2' ? 'text-emerald-800/90 dark:text-emerald-300/90' : 'text-teal-800/90 dark:text-teal-300/90'
+                  }`}>
+                    {booking.room === 'gmeet2'
+                      ? 'Perkuliahan ini menggunakan Google Meet Ruang 2 karena ruang Zoom dan Google Meet 1 sedang dipakai pada waktu yang sama.'
+                      : 'Perkuliahan ini menggunakan Google Meet Ruang 1 karena ruang Zoom sedang dipakai oleh sesi lain pada waktu yang sama.'}
                   </p>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <a
-                      href={zoomConfig?.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd'}
+                      href={booking.room === 'gmeet2'
+                        ? (zoomConfig?.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj')
+                        : (zoomConfig?.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd')}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-semibold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-2xs transition-colors cursor-pointer"
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg font-semibold text-xs text-white shadow-2xs transition-colors cursor-pointer ${
+                        booking.room === 'gmeet2' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-teal-600 hover:bg-teal-700'
+                      }`}
                     >
                       <Video className="w-3.5 h-3.5" />
-                      <span>Buka Google Meet</span>
+                      <span>{booking.room === 'gmeet2' ? 'Buka Google Meet 2' : 'Buka Google Meet 1'}</span>
                     </a>
 
                     <button
                       type="button"
-                      onClick={() => handleCopy(zoomConfig?.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd', 'Link Google Meet')}
+                      onClick={() => handleCopy(
+                        booking.room === 'gmeet2'
+                          ? (zoomConfig?.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj')
+                          : (zoomConfig?.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd'),
+                        booking.room === 'gmeet2' ? 'Link Google Meet 2' : 'Link Google Meet 1'
+                      )}
                       title="Salin Link Google Meet"
-                      className="px-3 py-2 rounded-lg border border-teal-200 dark:border-teal-800 bg-white dark:bg-zinc-900 hover:bg-teal-50 dark:hover:bg-zinc-800 text-xs font-medium text-teal-800 dark:text-teal-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs font-medium text-zinc-800 dark:text-zinc-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      {copiedField === 'Link Google Meet' ? (
+                      {copiedField?.startsWith('Link Google Meet') ? (
                         <>
                           <Check className="w-3.5 h-3.5 text-emerald-600" />
                           <span className="text-[11px] text-emerald-600 font-semibold">Tersalin</span>
@@ -185,7 +204,7 @@ export function DetailModal({
                   <ShieldCheck className="w-4 h-4 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
                   <div className="text-xs">
                     <span className="font-semibold text-slate-800 dark:text-zinc-200 block">
-                      Akses Ruang Google Meet Terproteksi
+                      Akses {booking.room === 'gmeet2' ? 'Ruang Google Meet 2' : 'Ruang Google Meet 1'} Terproteksi
                     </span>
                     <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-0.5 leading-relaxed">
                       Tautan Google Meet dibagikan secara khusus oleh Koordinator/Pemohon jadwal kepada dosen pengampu dan mahasiswa di kelas yang bersangkutan.

@@ -202,24 +202,40 @@ export function TodayScheduleModal({
               <div className="mt-3 pt-3 border-t border-rose-200/60 dark:border-rose-900/40 flex items-center justify-between gap-2">
                 {isAdmin ? (
                   <a
-                    href={(liveBooking.room === 'gmeet' ? zoomConfig?.gmeetUrl : zoomConfig?.joinUrl) || 'https://meet.google.com/kqe-reho-vbd'}
+                    href={
+                      liveBooking.room === 'gmeet2'
+                        ? (zoomConfig?.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj')
+                        : liveBooking.room === 'gmeet'
+                        ? (zoomConfig?.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd')
+                        : (zoomConfig?.joinUrl || 'https://zoom.us')
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors cursor-pointer ${
-                      liveBooking.room === 'gmeet'
+                      liveBooking.room === 'gmeet2'
+                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : liveBooking.room === 'gmeet'
                         ? 'bg-teal-600 hover:bg-teal-700'
                         : 'bg-[#17324D] hover:bg-[#112437]'
                     }`}
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
-                    <span>{liveBooking.room === 'gmeet' ? 'Buka Google Meet' : 'Buka Ruang Zoom'}</span>
+                    <span>
+                      {liveBooking.room === 'gmeet2'
+                        ? 'Buka Meet Ruang 2'
+                        : liveBooking.room === 'gmeet'
+                        ? 'Buka Meet Ruang 1'
+                        : 'Buka Ruang Zoom'}
+                    </span>
                   </a>
                 ) : (
                   <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-zinc-400">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     <span>
-                      {liveBooking.room === 'gmeet'
-                        ? `Tautan Google Meet perkuliahan telah dibagikan melalui PJ Angkatan ${liveBooking.batch}.`
+                      {liveBooking.room === 'gmeet2'
+                        ? `Tautan Google Meet Ruang 2 perkuliahan telah dibagikan melalui PJ Angkatan ${liveBooking.batch}.`
+                        : liveBooking.room === 'gmeet'
+                        ? `Tautan Google Meet Ruang 1 perkuliahan telah dibagikan melalui PJ Angkatan ${liveBooking.batch}.`
                         : `Tautan & Passcode Zoom telah dibagikan melalui PJ Angkatan ${liveBooking.batch}.`}
                     </span>
                   </div>
@@ -320,11 +336,13 @@ export function TodayScheduleModal({
                                   Angkatan {b.batch}
                                 </span>
                                 <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-bold ${
-                                  (b.room || 'zoom') === 'gmeet'
+                                  (b.room || 'zoom') === 'gmeet2'
+                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                    : (b.room || 'zoom') === 'gmeet'
                                     ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
                                     : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
                                 }`}>
-                                  {(b.room || 'zoom') === 'gmeet' ? 'Meet' : 'Zoom'}
+                                  {(b.room || 'zoom') === 'gmeet2' ? 'Meet 2' : (b.room || 'zoom') === 'gmeet' ? 'Meet 1' : 'Zoom'}
                                 </span>
                                 <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
                                   {b.note}

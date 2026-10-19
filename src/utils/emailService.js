@@ -201,9 +201,14 @@ function generateEmailHtml({
     minute: "2-digit",
   });
 
-  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet2 = (booking?.room || 'zoom') === 'gmeet2';
+  const isGmeet1 = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet = isGmeet1 || isGmeet2;
   const resolvedZoomUrl = (zoomConfig?.joinUrl && zoomConfig.joinUrl.trim()) || "https://zoom.us/j/91053222846?pwd=IVBzhDahrYwKkOZtl80RS88eZH1JzE.1";
-  const resolvedGmeetUrl = (zoomConfig?.gmeetUrl && zoomConfig.gmeetUrl.trim()) || "https://meet.google.com/kqe-reho-vbd";
+  const resolvedGmeetUrl = isGmeet2
+    ? ((zoomConfig?.gmeetUrl2 && zoomConfig.gmeetUrl2.trim()) || "https://meet.google.com/ftf-cowm-irj")
+    : ((zoomConfig?.gmeetUrl && zoomConfig.gmeetUrl.trim()) || "https://meet.google.com/kqe-reho-vbd");
+  const meetRoomLabel = isGmeet2 ? "Google Meet Ruang 2" : "Google Meet Ruang 1";
 
   const zoomBox = isApproved
     ? isGmeet
@@ -211,15 +216,15 @@ function generateEmailHtml({
       <div style="margin-top: 24px; padding: 20px; background: #f0fdfa; border: 1.5px solid #5eead4; border-radius: 12px;">
         <div style="display: flex; align-items: center; margin-bottom: 12px;">
           <span style="display: inline-block; width: 10px; height: 10px; background: #0d9488; border-radius: 50%; margin-right: 8px;"></span>
-          <strong style="color: #0f766e; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Akses Ruang Virtual Google Meet:</strong>
+          <strong style="color: #0f766e; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Akses Ruang Virtual ${meetRoomLabel}:</strong>
         </div>
         <p style="margin: 0 0 12px 0; font-size: 12px; color: #115e59; line-height: 1.5;">
-          Perkuliahan ini menggunakan <strong>Google Meet</strong> karena ruang Zoom pada sesi ini telah digunakan oleh mata kuliah lain.
+          Perkuliahan ini menggunakan <strong>${meetRoomLabel}</strong> karena ruang utama pada sesi ini telah digunakan oleh mata kuliah lain.
         </p>
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; color: #1e293b;">
           <tr>
             <td style="padding: 6px 0; color: #64748b; width: 120px;">Platform:</td>
-            <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">Google Meet</td>
+            <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${meetRoomLabel}</td>
           </tr>
           <tr>
             <td style="padding: 8px 0 4px 0; color: #64748b; vertical-align: top;">Tautan Meet:</td>
@@ -233,7 +238,7 @@ function generateEmailHtml({
 
         <div style="margin-top: 18px; text-align: center;">
           <a href="${resolvedGmeetUrl}" target="_blank" style="display: inline-block; background: #0d9488; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 12px 28px; border-radius: 8px; box-shadow: 0 2px 6px rgba(13,148,136,0.35);">
-            Buka Tautan Google Meet Sekarang &rarr;
+            Buka Tautan ${meetRoomLabel} Sekarang &rarr;
           </a>
         </div>
       </div>
@@ -404,8 +409,10 @@ function generateOperatorAlertHtml({ booking, appUrl, isAutoApproved = false }) 
     minute: "2-digit",
   });
 
-  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
-  const roomName = isGmeet ? "Google Meet" : "Zoom";
+  const isGmeet2 = (booking?.room || 'zoom') === 'gmeet2';
+  const isGmeet1 = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet = isGmeet1 || isGmeet2;
+  const roomName = isGmeet2 ? "Google Meet 2" : (isGmeet1 ? "Google Meet 1" : "Zoom");
 
   return `
 <!DOCTYPE html>
@@ -696,21 +703,27 @@ export async function sendApprovalEmail(booking, zoomConfig) {
     return { success: false, skipped: true, message: "Layanan email dinonaktifkan oleh Admin." };
   }
 
-  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
-  const roomName = isGmeet ? "Google Meet" : "Zoom";
+  const isGmeet2 = (booking?.room || 'zoom') === 'gmeet2';
+  const isGmeet1 = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet = isGmeet1 || isGmeet2;
+  const roomName = isGmeet2 ? "Google Meet Ruang 2" : (isGmeet1 ? "Google Meet Ruang 1" : "Zoom");
+
+  const resolvedMeetUrl = isGmeet2
+    ? (zoomConfig?.gmeetUrl2 || "https://meet.google.com/ftf-cowm-irj")
+    : (zoomConfig?.gmeetUrl || "https://meet.google.com/kqe-reho-vbd");
 
   const subject = `[DISETUJUI] Jadwal ${roomName} ${booking.note || "Perkuliahan"} - ${booking.day || ""} (${booking.timeSlot || ""})`;
 
   const heading = isGmeet
-    ? "Selamat! Pengajuan Jadwal Kuliah Telah Disetujui (Google Meet)"
+    ? `Selamat! Pengajuan Jadwal Kuliah Telah Disetujui (${roomName})`
     : "Selamat! Pengajuan Jadwal Zoom Telah Disetujui";
 
   const description = isGmeet
-    ? `Pengajuan jadwal Anda untuk mata kuliah <strong>${booking.note || "Perkuliahan"}</strong> pada hari <strong>${booking.day || "-"} (${booking.timeSlot || "-"} WIB)</strong> telah <strong>DISETUJUI</strong> via <strong>Google Meet</strong> (karena ruang Zoom pada sesi tersebut sudah terisi). Silakan gunakan tautan Google Meet berikut untuk perkuliahan:`
+    ? `Pengajuan jadwal Anda untuk mata kuliah <strong>${booking.note || "Perkuliahan"}</strong> pada hari <strong>${booking.day || "-"} (${booking.timeSlot || "-"} WIB)</strong> telah <strong>DISETUJUI</strong> via <strong>${roomName}</strong> (karena ruang utama pada sesi tersebut sudah terisi). Silakan gunakan tautan Google Meet berikut untuk perkuliahan:`
     : `Pengajuan jadwal Anda untuk mata kuliah <strong>${booking.note || "Perkuliahan"}</strong> pada hari <strong>${booking.day || "-"} (${booking.timeSlot || "-"} WIB)</strong> telah <strong>DISETUJUI</strong> oleh Pengelola. Silakan gunakan tautan dan kredensial Zoom berikut untuk memulai perkuliahan:`;
 
   const htmlContent = generateEmailHtml({
-    badgeText: isGmeet ? "DISETUJUI & VIA GOOGLE MEET" : "DISETUJUI & SIAP DIGUNAKAN",
+    badgeText: isGmeet ? `DISETUJUI & VIA ${roomName.toUpperCase()}` : "DISETUJUI & SIAP DIGUNAKAN",
     badgeBg: isGmeet ? "#ccfbf1" : "#dcfce7",
     badgeTextColor: isGmeet ? "#0f766e" : "#15803d",
     heading,
@@ -737,14 +750,14 @@ export async function sendApprovalEmail(booking, zoomConfig) {
     lecturer: booking.pic || "-",
     reject_reason: "-",
     room_platform: roomName,
-    meeting_link: isGmeet ? (zoomConfig?.gmeetUrl || "https://meet.google.com/kqe-reho-vbd") : (zoomConfig?.joinUrl || "https://zoom.us"),
+    meeting_link: isGmeet ? resolvedMeetUrl : (zoomConfig?.joinUrl || "https://zoom.us"),
     zoom_visible: isGmeet ? "none" : "block",
-    zoom_name: isGmeet ? "Google Meet (Alternatif)" : (zoomConfig?.name || "ZOOM KEBIDANAN"),
+    zoom_name: isGmeet ? roomName : (zoomConfig?.name || "ZOOM KEBIDANAN"),
     zoom_meeting_id: isGmeet ? "-" : (zoomConfig?.meetingId || "-"),
     zoom_passcode: isGmeet ? "-" : (zoomConfig?.passcode || "-"),
-    zoom_url: isGmeet ? (zoomConfig?.gmeetUrl || "https://meet.google.com/kqe-reho-vbd") : (zoomConfig?.joinUrl || "https://zoom.us"),
+    zoom_url: isGmeet ? resolvedMeetUrl : (zoomConfig?.joinUrl || "https://zoom.us"),
     message: isGmeet
-      ? `Selamat! Pengajuan jadwal Anda untuk mata kuliah ${booking.note} pada hari ${booking.day} (${booking.timeSlot} WIB) telah DISETUJUI via Google Meet.`
+      ? `Selamat! Pengajuan jadwal Anda untuk mata kuliah ${booking.note} pada hari ${booking.day} (${booking.timeSlot} WIB) telah DISETUJUI via ${roomName}.`
       : `Selamat! Pengajuan jadwal Anda untuk mata kuliah ${booking.note} pada hari ${booking.day} (${booking.timeSlot} WIB) telah DISETUJUI oleh Pengelola.`,
   };
 
@@ -919,8 +932,9 @@ export async function sendOperatorNotificationEmail(booking, isAutoApproved = fa
     return { success: false, skipped: true, message: "Email operator belum dikonfigurasi di Pengaturan." };
   }
 
-  const isGmeet = (booking?.room || 'zoom') === 'gmeet';
-  const roomName = isGmeet ? "Google Meet" : "Zoom";
+  const isGmeet2 = (booking?.room || 'zoom') === 'gmeet2';
+  const isGmeet1 = (booking?.room || 'zoom') === 'gmeet';
+  const roomName = isGmeet2 ? "Google Meet Ruang 2" : (isGmeet1 ? "Google Meet Ruang 1" : "Zoom");
 
   const subject = isAutoApproved
     ? `[NOTIFIKASI PRODI] Jadwal Baru Auto-Approved (${roomName}): ${booking.note || "Perkuliahan"} - ${booking.day || ""} (${booking.timeSlot || ""})`

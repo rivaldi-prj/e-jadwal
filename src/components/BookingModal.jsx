@@ -121,6 +121,11 @@ export function BookingModal({
             const testMeet = checkCollision({ ...initialData.booking, room: 'gmeet' });
             if (!testMeet.hasCollision) {
               initialRoom = 'gmeet';
+            } else {
+              const testMeet2 = checkCollision({ ...initialData.booking, room: 'gmeet2' });
+              if (!testMeet2.hasCollision) {
+                initialRoom = 'gmeet2';
+              }
             }
           }
         }
@@ -142,6 +147,11 @@ export function BookingModal({
             const testMeet = checkCollision({ day: targetDay, timeSlot: targetSlot, room: 'gmeet', batch: '2024' });
             if (!testMeet.hasCollision) {
               initialRoom = 'gmeet';
+            } else {
+              const testMeet2 = checkCollision({ day: targetDay, timeSlot: targetSlot, room: 'gmeet2', batch: '2024' });
+              if (!testMeet2.hasCollision) {
+                initialRoom = 'gmeet2';
+              }
             }
           }
         }
@@ -323,16 +333,37 @@ export function BookingModal({
                     </p>
                   ) : null;
                 })()}
-                {collisionResult.type === 'ROOM_CONFLICT' && formData.room === 'zoom' && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, room: 'gmeet' }))}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-                    >
-                      <Video className="w-3.5 h-3.5" />
-                      Alihkan ke Google Meet (Tersedia)
-                    </button>
+                {collisionResult.type === 'ROOM_CONFLICT' && (
+                  <div className="pt-2 flex items-center gap-2 flex-wrap">
+                    {formData.room !== 'zoom' && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, room: 'zoom' }))}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                      >
+                        Pindah ke Zoom
+                      </button>
+                    )}
+                    {formData.room !== 'gmeet' && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, room: 'gmeet' }))}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        Pindah ke Google Meet 1
+                      </button>
+                    )}
+                    {formData.room !== 'gmeet2' && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, room: 'gmeet2' }))}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                      >
+                        <Video className="w-3.5 h-3.5" />
+                        Pindah ke Google Meet 2
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -378,18 +409,18 @@ export function BookingModal({
             </div>
           </div>
 
-          {/* Virtual Room Selector (Zoom vs Google Meet) */}
+          {/* Virtual Room Selector (Zoom vs Google Meet 1 vs Google Meet 2) */}
           <div>
             <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center gap-1.5">
               <Video className="w-3.5 h-3.5 text-zinc-400" />
               Ruang Perkuliahan Virtual
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, room: 'zoom' })}
-                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  formData.room !== 'gmeet'
+                className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  formData.room === 'zoom' || (!formData.room)
                     ? 'border-sky-500 bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 ring-2 ring-sky-500/30 shadow-xs'
                     : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
@@ -399,14 +430,26 @@ export function BookingModal({
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, room: 'gmeet' })}
-                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   formData.room === 'gmeet'
                     ? 'border-teal-500 bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 ring-2 ring-teal-500/30 shadow-xs'
                     : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                 }`}
               >
-                <Video className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-                <span>Google Meet</span>
+                <Video className="w-3 h-3 text-teal-600 dark:text-teal-400 shrink-0" />
+                <span className="truncate">Meet 1</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, room: 'gmeet2' })}
+                className={`py-2 px-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  formData.room === 'gmeet2'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 ring-2 ring-emerald-500/30 shadow-xs'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                }`}
+              >
+                <Video className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="truncate">Meet 2</span>
               </button>
             </div>
           </div>

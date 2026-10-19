@@ -113,6 +113,7 @@ export function ZoomConfigModal({
     meetingId: zoomConfig.meetingId || '',
     passcode: zoomConfig.passcode || '',
     gmeetUrl: zoomConfig.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd',
+    gmeetUrl2: zoomConfig.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj',
   });
 
   const [supabaseForm, setSupabaseForm] = useState(() => {
@@ -554,14 +555,15 @@ export function ZoomConfigModal({
                 </div>
               </div>
 
+              {/* Google Meet 1 */}
               <div className="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
                 <div className="flex items-center gap-2 mb-1.5">
                   <Video className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   <label className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                    Tautan Google Meet
+                    Tautan Google Meet Ruang 1 (Alternatif 1)
                   </label>
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300">
-                    Google Meet
+                    Ruang 1
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2 leading-relaxed">
@@ -583,7 +585,45 @@ export function ZoomConfigModal({
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
-                      title="Buka link Meet"
+                      title="Buka link Meet 1"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Google Meet 2 */}
+              <div className="pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Video className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <label className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                    Tautan Google Meet Ruang 2 (Alternatif 2)
+                  </label>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    Ruang 2
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2 leading-relaxed">
+                  Tautan ini otomatis diberikan kepada mahasiswa ketika ruang Zoom dan Google Meet 1 pada jam tersebut sudah terisi penuh (kapasitas 3 sesi paralel).
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    disabled={!isAdmin}
+                    required
+                    placeholder="https://meet.google.com/..."
+                    value={configForm.gmeetUrl2}
+                    onChange={(e) => setConfigForm({ ...configForm, gmeetUrl2: e.target.value })}
+                    className="w-full text-xs px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-900/60 text-zinc-900 dark:text-zinc-100 disabled:opacity-60 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition-colors font-mono"
+                  />
+                  {configForm.gmeetUrl2 && (
+                    <a
+                      href={configForm.gmeetUrl2.startsWith('http') ? configForm.gmeetUrl2 : `https://${configForm.gmeetUrl2}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex-shrink-0"
+                      title="Buka link Meet 2"
                     >
                       <ExternalLink className="w-4 h-4" />
                     </a>

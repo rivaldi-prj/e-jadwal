@@ -70,19 +70,25 @@ function getDuplicateInfo(booking, pendingList = [], allList = []) {
 
   if (roomConflict) {
     const isZoomConflict = bookingRoom === 'zoom';
-    // Cek apakah Google Meet kosong di slot ini
-    const meetOccupied = approvedMatches.some(b => (b.room || 'zoom') === 'gmeet');
-    const canFallbackMeet = isZoomConflict && !meetOccupied;
+    const meet1Occupied = approvedMatches.some(b => (b.room || 'zoom') === 'gmeet');
+    const meet2Occupied = approvedMatches.some(b => (b.room || 'zoom') === 'gmeet2');
+    const canFallbackMeet1 = isZoomConflict && !meet1Occupied;
+    const canFallbackMeet2 = (isZoomConflict || bookingRoom === 'gmeet') && !meet2Occupied;
+    const fallbackRoom = canFallbackMeet1 ? 'gmeet' : (canFallbackMeet2 ? 'gmeet2' : null);
+    const fallbackLabel = canFallbackMeet1 ? 'Alihkan ke Google Meet 1' : (canFallbackMeet2 ? 'Alihkan ke Google Meet 2' : null);
 
     return {
       type: 'room_conflict',
       conflictRoom: bookingRoom,
-      canFallbackMeet,
+      canFallbackMeet: Boolean(fallbackRoom),
+      fallbackRoom,
       conflictingBooking: roomConflict,
-      label: canFallbackMeet ? 'Ruang Zoom Terisi · Alihkan ke Google Meet' : `Bentrok Ruang ${bookingRoom === 'gmeet' ? 'Google Meet' : 'Zoom'} Terisi`,
-      message: canFallbackMeet
-        ? `Ruang Zoom pada hari ${roomConflict.day} (${roomConflict.timeSlot} WIB) sudah resmi terisi perkuliahan "${roomConflict.note}" (Angkatan ${roomConflict.batch}). Google Meet tersedia sebagai ruang alternatif.`
-        : `Ruang ${bookingRoom === 'gmeet' ? 'Google Meet' : 'Zoom'} pada hari ${roomConflict.day} (${roomConflict.timeSlot} WIB) sudah resmi terisi perkuliahan "${roomConflict.note}" (Angkatan ${roomConflict.batch}).`,
+      label: fallbackRoom
+        ? `Ruang ${bookingRoom === 'zoom' ? 'Zoom' : 'Meet 1'} Terisi · ${fallbackLabel}`
+        : `Bentrok Ruang ${bookingRoom === 'gmeet2' ? 'Meet 2' : (bookingRoom === 'gmeet' ? 'Meet 1' : 'Zoom')} Terisi`,
+      message: fallbackRoom
+        ? `Ruang pada hari ${roomConflict.day} (${roomConflict.timeSlot} WIB) sudah resmi terisi perkuliahan "${roomConflict.note}" (Angkatan ${roomConflict.batch}). ${fallbackRoom === 'gmeet2' ? 'Google Meet Ruang 2' : 'Google Meet Ruang 1'} tersedia sebagai alternatif.`
+        : `Ruang ${bookingRoom === 'gmeet2' ? 'Google Meet Ruang 2' : (bookingRoom === 'gmeet' ? 'Google Meet 1' : 'Zoom')} pada hari ${roomConflict.day} (${roomConflict.timeSlot} WIB) sudah resmi terisi perkuliahan "${roomConflict.note}" (Angkatan ${roomConflict.batch}).`,
     };
   }
 
@@ -97,7 +103,7 @@ function getDuplicateInfo(booking, pendingList = [], allList = []) {
 
   if (pendingMatch) {
     const isSameCourse = currentCourse && (pendingMatch.note || '').trim().toLowerCase() === currentCourse;
-    const roomName = bookingRoom === 'gmeet' ? 'Google Meet' : 'Zoom';
+    const roomName = bookingRoom === 'gmeet2' ? 'Google Meet 2' : (bookingRoom === 'gmeet' ? 'Google Meet 1' : 'Zoom');
     return {
       type: 'pending',
       canFallbackMeet: false,
@@ -130,9 +136,9 @@ export function PendingRequestsPanel({
     if (res.success) {
       const emailNote = booking.requesterEmail ? ` Notifikasi email dikirim ke ${booking.requesterEmail}.` : '';
       const finalRoom = res.target?.room || overrideRoom || booking.room || 'zoom';
-      const redirectedText = res.switchedToMeet || (booking.room !== 'gmeet' && finalRoom === 'gmeet')
-        ? ' (Otomatis dialihkan ke Google Meet karena Ruang Zoom terisi)'
-        : ` via ${finalRoom === 'gmeet' ? 'Google Meet' : 'Zoom'}`;
+      const redirectedText = res.switchedToMeet || (booking.room !== finalRoom)
+        ? ` (Otomatis dialihkan ke ${finalRoom === 'gmeet2' ? 'Google Meet 2' : (finalRoom === 'gmeet' ? 'Google Meet 1' : 'Zoom')})`
+        : ` via ${finalRoom === 'gmeet2' ? 'Google Meet 2' : (finalRoom === 'gmeet' ? 'Google Meet 1' : 'Zoom')}`;
       onShowToast({
         type: 'success',
         title: 'Jadwal Disetujui',
@@ -250,13 +256,15 @@ export function PendingRequestsPanel({
                   </span>
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
-                      booking.room === 'gmeet'
+                      booking.room === 'gmeet2'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                        : booking.room === 'gmeet'
                         ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 border border-teal-300 dark:border-teal-800'
                         : 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
                     }`}
                   >
-                    {booking.room === 'gmeet' ? <Video className="w-2.5 h-2.5" /> : null}
-                    <span>{booking.room === 'gmeet' ? 'Google Meet' : 'Zoom'}</span>
+                    {booking.room === 'gmeet' || booking.room === 'gmeet2' ? <Video className="w-2.5 h-2.5" /> : null}
+                    <span>{booking.room === 'gmeet2' ? 'Google Meet 2' : (booking.room === 'gmeet' ? 'Google Meet 1' : 'Zoom')}</span>
                   </span>
                   {dupInfo && (
                     <span
@@ -350,11 +358,11 @@ export function PendingRequestsPanel({
                       {dupInfo?.canFallbackMeet ? (
                         <button
                           type="button"
-                          onClick={() => handleApprove(booking, 'gmeet')}
+                          onClick={() => handleApprove(booking, dupInfo.fallbackRoom)}
                           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                         >
                           <Video className="w-3.5 h-3.5" />
-                          Setujui via Google Meet
+                          Setujui via {dupInfo.fallbackRoom === 'gmeet2' ? 'Google Meet 2' : 'Google Meet 1'}
                         </button>
                       ) : (
                         <button

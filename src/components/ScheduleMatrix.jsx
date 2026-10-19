@@ -373,7 +373,9 @@ export function ScheduleMatrix({
                       {hasBookings ? (
                         <div className="space-y-3">
                           {slotBookings.map((booking, bIdx) => {
-                            const isGmeet = (booking.room || 'zoom') === 'gmeet';
+                            const isGmeet2 = (booking.room || 'zoom') === 'gmeet2';
+                            const isGmeet1 = (booking.room || 'zoom') === 'gmeet';
+                            const isGmeet = isGmeet1 || isGmeet2;
                             const batchInfo = BATCHES.find((b) => b.id === booking.batch) || {
                               badge: 'bg-slate-100 text-slate-700 border border-slate-200',
                               cardBg: 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800',
@@ -389,13 +391,15 @@ export function ScheduleMatrix({
                                 <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                                   <span
                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                      isGmeet
+                                      isGmeet2
+                                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                        : isGmeet1
                                         ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800'
                                         : 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800'
                                     }`}
                                   >
                                     {isGmeet ? <Video className="w-2.5 h-2.5" /> : null}
-                                    <span>{isGmeet ? 'Google Meet' : 'Zoom'}</span>
+                                    <span>{isGmeet2 ? 'Google Meet 2' : (isGmeet1 ? 'Google Meet 1' : 'Zoom')}</span>
                                   </span>
 
                                   <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-tight ${batchInfo.badge}`}>

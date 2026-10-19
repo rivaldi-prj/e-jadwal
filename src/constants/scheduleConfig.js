@@ -83,7 +83,41 @@ export const DEFAULT_ZOOM_CONFIG = {
   meetingId: '910 5322 2846',
   passcode: '433452',
   gmeetUrl: 'https://meet.google.com/kqe-reho-vbd',
+  gmeetUrl2: 'https://meet.google.com/ftf-cowm-irj',
 };
+
+export const ROOM_CONFIG = {
+  zoom: {
+    id: 'zoom',
+    name: 'Zoom Kebidanan',
+    shortName: 'Zoom',
+    defaultUrl: 'https://zoom.us/j/91053222846?pwd=IVBzhDahrYwKkOZtl80RS88eZH1JzE.1',
+  },
+  gmeet: {
+    id: 'gmeet',
+    name: 'Google Meet Ruang 1',
+    shortName: 'Meet 1',
+    defaultUrl: 'https://meet.google.com/kqe-reho-vbd',
+  },
+  gmeet2: {
+    id: 'gmeet2',
+    name: 'Google Meet Ruang 2',
+    shortName: 'Meet 2',
+    defaultUrl: 'https://meet.google.com/ftf-cowm-irj',
+  },
+};
+
+export function getRoomDisplayName(room) {
+  if (room === 'gmeet2') return 'Google Meet Ruang 2';
+  if (room === 'gmeet') return 'Google Meet Ruang 1';
+  return 'Zoom Kebidanan';
+}
+
+export function getRoomUrl(room, zoomConfig = {}) {
+  if (room === 'gmeet2') return zoomConfig?.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2;
+  if (room === 'gmeet') return zoomConfig?.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl;
+  return zoomConfig?.joinUrl || DEFAULT_ZOOM_CONFIG.joinUrl;
+}
 
 export const DEFAULT_ADMIN_PIN = '1234';
 
