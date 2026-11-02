@@ -48,6 +48,7 @@ export function getEmailConfig() {
   }
 
   return {
+    
     enabled: true,
     provider: "smart",
     operatorEmail: import.meta.env.VITE_OPERATOR_EMAIL || DEFAULT_BREVO_CONFIG.senderEmail,

@@ -69,39 +69,50 @@ function getSlotMinutes(timeSlotLabel) {
 export function isBookingPast(booking) {
   if (!booking || !booking.day) return false;
   try {
-    const now = new Date();
-    const currentDay = now.toLocaleDateString('id-ID', {
-      timeZone: 'Asia/Jakarta',
-      weekday: 'long',
-    });
-    const curIdx = DAYS_OF_WEEK.indexOf(currentDay);
-    const bIdx = DAYS_OF_WEEK.indexOf(booking.day);
-    if (curIdx < 0 || bIdx < 0) return false;
-
-    const bDate = new Date(booking.updatedAt || booking.requestedAt || booking.approvedAt || 0);
-    const bDay = bDate.toLocaleDateString('id-ID', {
-      timeZone: 'Asia/Jakarta',
-      weekday: 'long',
-    });
-    const todayStart = new Date(now.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta' })).getTime();
-
-    // 1. Hari perkuliahan sudah lewat di minggu berjalan (misal booking Senin/Selasa ketika hari ini Rabu)
-    // dan booking dibuat sebelum hari ini (bukan pengajuan baru untuk minggu depan)
-    if (bIdx < curIdx && bDate.getTime() < todayStart) {
-      return true;
+    let endH = 23;
+    let endM = 59;
+    const match = (booking.timeSlot || '').match(/[-–—]\s*(\d{1,2})[:.](\d{2})/);
+    if (match) {
+      endH = parseInt(match[1], 10);
+      endM = parseInt(match[2], 10);
+    } else {
+      const slot = TIME_SLOTS.find(s => s.label === booking.timeSlot);
+      if (slot) {
+        endH = slot.endH;
+        endM = slot.endM;
+      }
     }
 
-    // 2. Booking dibuat pada hari yang sama dengan hari perkuliahannya dan sudah lewat lebih dari 24 jam
-    if (booking.day === bDay && (now.getTime() - bDate.getTime()) > 24 * 60 * 60 * 1000) {
-      return true;
+    const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const rawCreated = booking.requestedAt || booking.updatedAt || booking.approvedAt;
+
+    const DAY_MAP = {
+      'Minggu': 0, 'Senin': 1, 'Selasa': 2, 'Rabu': 3, 'Kamis': 4, 'Jumat': 5, 'Sabtu': 6,
+    };
+    const targetDayNum = DAY_MAP[booking.day];
+    if (targetDayNum === undefined) return false;
+
+    let targetDate;
+    if (rawCreated) {
+      const createdDate = new Date(rawCreated);
+      const createdWib = new Date(createdDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const createdDayNum = createdWib.getDay();
+      let diff = targetDayNum - createdDayNum;
+      if (diff < 0) diff += 7;
+
+      targetDate = new Date(createdWib);
+      targetDate.setDate(targetDate.getDate() + diff);
+      targetDate.setHours(endH, endM, 0, 0);
+    } else {
+      // Fallback: bandingkan dalam rentang minggu berjalan di WIB
+      const curDayNum = nowWib.getDay();
+      let diff = targetDayNum - curDayNum;
+      targetDate = new Date(nowWib);
+      targetDate.setDate(targetDate.getDate() + diff);
+      targetDate.setHours(endH, endM, 0, 0);
     }
 
-    // 3. Booking sudah lebih dari 7 hari lalu (pembersihan total jadwal lama)
-    if ((now.getTime() - bDate.getTime()) > 7 * 24 * 60 * 60 * 1000) {
-      return true;
-    }
-
-    return false;
+    return nowWib.getTime() >= targetDate.getTime();
   } catch {
     return false;
   }
@@ -516,8 +527,17 @@ export function useScheduleStore() {
               room,
             };
           });
-          setBookings(mapped);
-          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(mapped));
+
+          // Otomatis bersihkan jadwal yang sudah selesai
+          const expiredBookings = mapped.filter(b => isBookingPast(b));
+          if (expiredBookings.length > 0) {
+            const expiredIds = expiredBookings.map(b => b.id);
+            client.from('bookings').delete().in('id', expiredIds).then(() => {}).catch(() => {});
+          }
+
+          const validBookings = mapped.filter(b => !isBookingPast(b));
+          setBookings(validBookings);
+          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(validBookings));
           setLastSyncTime(new Date());
         }
       } catch {
@@ -552,8 +572,16 @@ export function useScheduleStore() {
                 room,
               };
             });
-            setBookings(mapped);
-            localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(mapped));
+
+            const expiredBookings = mapped.filter(b => isBookingPast(b));
+            if (expiredBookings.length > 0) {
+              const expiredIds = expiredBookings.map(b => b.id);
+              client.from('bookings').delete().in('id', expiredIds).then(() => {}).catch(() => {});
+            }
+
+            const validBookings = mapped.filter(b => !isBookingPast(b));
+            setBookings(validBookings);
+            localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(validBookings));
             setLastSyncTime(new Date());
           }
         } catch {
