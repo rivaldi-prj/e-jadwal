@@ -921,19 +921,20 @@ export async function sendTestEmail(targetEmail) {
  * Kirim email notifikasi instan ke Operator / Pengelola Prodi
  * saat ada mahasiswa yang baru saja mengajukan jadwal
  */
-export async function sendOperatorNotificationEmail(booking, isAutoApproved = false) {
+export async function sendOperatorNotificationEmail(booking, isAutoApproved = false, overrideOperatorEmail = null) {
   const cfg = getEmailConfig();
   if (!cfg.enabled) {
     return { success: false, skipped: true, message: "Layanan email dinonaktifkan." };
   }
 
-  const operatorEmail = (cfg.operatorEmail || cfg.brevoSenderEmail || "").trim();
+  const operatorEmail = (overrideOperatorEmail || cfg.operatorEmail || cfg.brevoSenderEmail || "").trim();
   if (!operatorEmail) {
     return { success: false, skipped: true, message: "Email operator belum dikonfigurasi di Pengaturan." };
   }
 
   const isGmeet2 = (booking?.room || 'zoom') === 'gmeet2';
   const isGmeet1 = (booking?.room || 'zoom') === 'gmeet';
+  const isGmeet = isGmeet1 || isGmeet2;
   const roomName = isGmeet2 ? "Google Meet Ruang 2" : (isGmeet1 ? "Google Meet Ruang 1" : "Zoom");
 
   const subject = isAutoApproved
@@ -969,7 +970,7 @@ export async function sendOperatorNotificationEmail(booking, isAutoApproved = fa
     reject_reason: "-",
     room_platform: roomName,
     zoom_visible: "none",
-    zoom_name: isGmeet ? "Google Meet (Alternatif)" : "Zoom",
+    zoom_name: isGmeet2 ? "Google Meet Ruang 2" : (isGmeet1 ? "Google Meet Ruang 1" : "Zoom"),
     zoom_meeting_id: "-",
     zoom_passcode: "-",
     zoom_url: appUrl,

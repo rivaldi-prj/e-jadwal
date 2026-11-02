@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Settings,
@@ -114,6 +114,7 @@ export function ZoomConfigModal({
     passcode: zoomConfig.passcode || '',
     gmeetUrl: zoomConfig.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd',
     gmeetUrl2: zoomConfig.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj',
+    operatorEmail: zoomConfig.operatorEmail || '',
   });
 
   const [supabaseForm, setSupabaseForm] = useState(() => {
@@ -133,10 +134,36 @@ export function ZoomConfigModal({
   const [pinMessage, setPinMessage] = useState(null);
 
   // Email Notification configuration state
-  const [emailForm, setEmailForm] = useState(() => getEmailConfig());
+  const [emailForm, setEmailForm] = useState(() => {
+    const cfg = getEmailConfig();
+    return {
+      ...cfg,
+      operatorEmail: zoomConfig.operatorEmail || cfg.operatorEmail || '',
+    };
+  });
   const [testEmailAddress, setTestEmailAddress] = useState('');
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [showBrevoKey, setShowBrevoKey] = useState(false);
+
+  // Sinkronkan form saat modal dibuka atau zoomConfig dari remote cloud terupdate
+  useEffect(() => {
+    if (isOpen) {
+      setConfigForm({
+        name: zoomConfig.name || '',
+        joinUrl: zoomConfig.joinUrl || '',
+        meetingId: zoomConfig.meetingId || '',
+        passcode: zoomConfig.passcode || '',
+        gmeetUrl: zoomConfig.gmeetUrl || 'https://meet.google.com/kqe-reho-vbd',
+        gmeetUrl2: zoomConfig.gmeetUrl2 || 'https://meet.google.com/ftf-cowm-irj',
+        operatorEmail: zoomConfig.operatorEmail || '',
+      });
+      const cfg = getEmailConfig();
+      setEmailForm({
+        ...cfg,
+        operatorEmail: zoomConfig.operatorEmail || cfg.operatorEmail || '',
+      });
+    }
+  }, [isOpen, zoomConfig]);
 
   if (!isOpen) return null;
 
@@ -151,10 +178,19 @@ export function ZoomConfigModal({
       return;
     }
     saveEmailConfig(emailForm);
+
+    // Sinkronkan email operator ke cloud agar perangkat mahasiswa langsung mengenali email admin
+    if (onUpdateZoomConfig) {
+      onUpdateZoomConfig({
+        ...configForm,
+        operatorEmail: (emailForm.operatorEmail || '').trim(),
+      });
+    }
+
     onShowToast({
       type: 'success',
       title: 'Konfigurasi Email Disimpan',
-      message: 'Pengaturan notifikasi email otomatis (Brevo & EmailJS) berhasil diperbarui.',
+      message: 'Pengaturan notifikasi email otomatis (Brevo & EmailJS) berhasil diperbarui dan disinkronkan ke seluruh sistem.',
     });
   };
 
@@ -202,7 +238,10 @@ export function ZoomConfigModal({
       });
       return;
     }
-    onUpdateZoomConfig(configForm);
+    onUpdateZoomConfig({
+      ...configForm,
+      operatorEmail: (emailForm.operatorEmail || configForm.operatorEmail || '').trim(),
+    });
     onShowToast({
       type: 'success',
       title: 'Kredensial Zoom Diperbarui',

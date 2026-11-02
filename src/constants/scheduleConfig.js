@@ -84,6 +84,7 @@ export const DEFAULT_ZOOM_CONFIG = {
   passcode: '433452',
   gmeetUrl: 'https://meet.google.com/kqe-reho-vbd',
   gmeetUrl2: 'https://meet.google.com/ftf-cowm-irj',
+  operatorEmail: 's1kebidanan@fikes.unbrah.ac.id',
 };
 
 export const ROOM_CONFIG = {

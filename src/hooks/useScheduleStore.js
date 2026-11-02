@@ -358,6 +358,7 @@ export function useScheduleStore() {
             passcode: remoteConfig.passcode,
             gmeetUrl: remoteConfig.gmeet_url || remoteConfig.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
             gmeetUrl2: remoteConfig.gmeet_url_2 || remoteConfig.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
+            operatorEmail: remoteConfig.operator_email || remoteConfig.operatorEmail || DEFAULT_ZOOM_CONFIG.operatorEmail,
           };
           setZoomConfig(mappedCfg);
           localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(mappedCfg));
@@ -461,6 +462,7 @@ export function useScheduleStore() {
                   passcode: payload.new.passcode,
                   gmeetUrl: payload.new.gmeet_url || payload.new.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
                   gmeetUrl2: payload.new.gmeet_url_2 || payload.new.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
+                  operatorEmail: payload.new.operator_email || payload.new.operatorEmail || DEFAULT_ZOOM_CONFIG.operatorEmail,
                 };
                 setZoomConfig(mappedCfg);
                 localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(mappedCfg));
@@ -891,7 +893,7 @@ export function useScheduleStore() {
       // 2. Kirim notifikasi instan ke Operator Prodi (Auto-Approved)
       // Diberi jeda 400ms agar request API EmailJS tidak bertabrakan secara simultan
       setTimeout(() => {
-        sendOperatorNotificationEmail(newBooking, true).then((opRes) => {
+        sendOperatorNotificationEmail(newBooking, true, zoomConfig?.operatorEmail).then((opRes) => {
           if (opRes?.success) {
             console.log(`[AutoApprove] Notifikasi pengajuan baru terkirim ke Operator (${opRes.operatorEmail})`);
           } else if (!opRes?.skipped) {
@@ -913,7 +915,7 @@ export function useScheduleStore() {
 
       // Notifikasi operator untuk kasus yang butuh review manual
       setTimeout(() => {
-        sendOperatorNotificationEmail(newBooking, false).then((opRes) => {
+        sendOperatorNotificationEmail(newBooking, false, zoomConfig?.operatorEmail).then((opRes) => {
           if (opRes?.success) {
             console.log(`Email notifikasi pengajuan baru terkirim ke Operator Prodi (${opRes.operatorEmail})`);
           } else if (!opRes?.skipped) {
@@ -1189,9 +1191,15 @@ export function useScheduleStore() {
           passcode: updated.passcode,
           gmeet_url: updated.gmeetUrl,
           gmeet_url_2: updated.gmeetUrl2,
+          operator_email: updated.operatorEmail || DEFAULT_ZOOM_CONFIG.operatorEmail,
           updated_at: new Date().toISOString(),
         };
         let { error } = await client.from('zoom_config').upsert(payload);
+        if (error && error.message?.includes('operator_email')) {
+          delete payload.operator_email;
+          const retry = await client.from('zoom_config').upsert(payload);
+          error = retry.error;
+        }
         if (error && error.message?.includes('gmeet_url_2')) {
           delete payload.gmeet_url_2;
           const retry = await client.from('zoom_config').upsert(payload);
@@ -1282,9 +1290,15 @@ export function useScheduleStore() {
         passcode: zoomConfig.passcode,
         gmeet_url: zoomConfig.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
         gmeet_url_2: zoomConfig.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
+        operator_email: zoomConfig.operatorEmail || DEFAULT_ZOOM_CONFIG.operatorEmail,
         updated_at: new Date().toISOString(),
       };
       let { error: zErr } = await client.from('zoom_config').upsert(zoomPayload);
+      if (zErr && zErr.message?.includes('operator_email')) {
+        delete zoomPayload.operator_email;
+        const retry = await client.from('zoom_config').upsert(zoomPayload);
+        zErr = retry.error;
+      }
       if (zErr && zErr.message?.includes('gmeet_url_2')) {
         delete zoomPayload.gmeet_url_2;
         const retry = await client.from('zoom_config').upsert(zoomPayload);
