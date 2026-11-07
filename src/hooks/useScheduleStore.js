@@ -65,7 +65,7 @@ function getSlotMinutes(timeSlotLabel) {
   };
 }
 
-// Helper: cek apakah jadwal perkuliahan sudah berlalu (otomatis dihapus agar slot kosong untuk minggu depan)
+// Helper: cek apakah jadwal perkuliahan sudah berlalu (otomatis dihapus agar slot kosong untuk perkuliahan berikutnya)
 export function isBookingPast(booking) {
   if (!booking || !booking.day) return false;
   try {
@@ -84,35 +84,52 @@ export function isBookingPast(booking) {
     }
 
     const nowWib = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-    const rawCreated = booking.requestedAt || booking.updatedAt || booking.approvedAt;
-
-    const DAY_MAP = {
-      'Minggu': 0, 'Senin': 1, 'Selasa': 2, 'Rabu': 3, 'Kamis': 4, 'Jumat': 5, 'Sabtu': 6,
+    const DAY_INDEX = {
+      'Senin': 0, 'Selasa': 1, 'Rabu': 2, 'Kamis': 3, 'Jumat': 4, 'Sabtu': 5, 'Minggu': 6,
     };
-    const targetDayNum = DAY_MAP[booking.day];
-    if (targetDayNum === undefined) return false;
+    const bIdx = DAY_INDEX[booking.day];
+    if (bIdx === undefined) return false;
 
-    let targetDate;
-    if (rawCreated) {
-      const createdDate = new Date(rawCreated);
-      const createdWib = new Date(createdDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-      const createdDayNum = createdWib.getDay();
-      let diff = targetDayNum - createdDayNum;
-      if (diff < 0) diff += 7;
+    // nowWib.getDay(): 0=Minggu, 1=Senin, ..., 6=Sabtu
+    const curDayNum = nowWib.getDay();
+    const curIdx = curDayNum === 0 ? 6 : curDayNum - 1; // 0=Senin .. 6=Minggu
 
-      targetDate = new Date(createdWib);
-      targetDate.setDate(targetDate.getDate() + diff);
-      targetDate.setHours(endH, endM, 0, 0);
-    } else {
-      // Fallback: bandingkan dalam rentang minggu berjalan di WIB
-      const curDayNum = nowWib.getDay();
-      let diff = targetDayNum - curDayNum;
-      targetDate = new Date(nowWib);
-      targetDate.setDate(targetDate.getDate() + diff);
-      targetDate.setHours(endH, endM, 0, 0);
+    const curTotalMin = nowWib.getHours() * 60 + nowWib.getMinutes();
+    const endTotalMin = endH * 60 + endM;
+
+    const rawCreated = booking.requestedAt || booking.updatedAt || booking.approvedAt;
+    const createdDate = rawCreated ? new Date(rawCreated) : null;
+    const ageMs = createdDate ? (nowWib.getTime() - createdDate.getTime()) : null;
+
+    // 1. Jadwal berumur lebih dari 7 hari mutlak kedaluwarsa
+    if (ageMs !== null && ageMs >= 7 * 24 * 60 * 60 * 1000) {
+      return true;
     }
 
-    return nowWib.getTime() >= targetDate.getTime();
+    // 2. Hari yang sama: kedaluwarsa saat jam selesai perkuliahan sudah lewat
+    if (bIdx === curIdx) {
+      return curTotalMin >= endTotalMin;
+    }
+
+    // 3. Hari sebelum hari ini dalam siklus minggu berjalan (misal jadwal Senin, sedangkan hari ini Selasa-Minggu):
+    if (bIdx < curIdx) {
+      // Jika dibuat lebih dari 20 jam lalu atau tanpa timestamp, mutlak sudah lewat
+      if (ageMs === null || ageMs > 20 * 60 * 60 * 1000) {
+        return true;
+      }
+      // Jika baru diajukan (< 20 jam), periksa apakah dibuat pada hari jadwal atau setelahnya
+      if (createdDate) {
+        const createdWib = new Date(createdDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        const cDayNum = createdWib.getDay();
+        const cIdx = cDayNum === 0 ? 6 : cDayNum - 1;
+        if (cIdx >= bIdx) {
+          return true;
+        }
+      }
+    }
+
+    // 4. Hari sesudah hari ini dalam minggu berjalan: belum kedaluwarsa
+    return false;
   } catch {
     return false;
   }

@@ -48,12 +48,13 @@ export function RequestSlotModal({
   onRequest,
   allBookings = [],
   initialData,
+  currentDay,
   onOpenTrackModal,
   onOpenGuideModal,
 }) {
   const [formData, setFormData] = useState({
-    day: DAYS_OF_WEEK[0],
-    timeSlot: TIME_SLOTS[0].label,
+    day: initialData?.day || currentDay || DAYS_OF_WEEK[0],
+    timeSlot: initialData?.slot?.label || TIME_SLOTS[0].label,
     batch: '2024',
     note: '',
     pic: '',
@@ -113,20 +114,29 @@ export function RequestSlotModal({
   }, [formData.day]);
 
   useEffect(() => {
-    if (initialData && isOpen) {
-      setFormData(prev => ({
-        ...prev,
-        day: initialData.day || DAYS_OF_WEEK[0],
-        timeSlot: initialData.slot?.label || TIME_SLOTS[0].label,
-        room: 'zoom',
-      }));
+    if (isOpen) {
+      if (initialData) {
+        setFormData(prev => ({
+          ...prev,
+          day: initialData.day || currentDay || DAYS_OF_WEEK[0],
+          timeSlot: initialData.slot?.label || TIME_SLOTS[0].label,
+          room: 'zoom',
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          day: currentDay || DAYS_OF_WEEK[0],
+          timeSlot: TIME_SLOTS[0].label,
+          room: 'zoom',
+        }));
+      }
     }
     if (!isOpen) {
       setSubmitted(false);
       setIsSubmitting(false);
       setErrorMessage('');
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, currentDay]);
 
   // Get courses taught by selected lecturer
   const suggestedCourses = formData.pic ? getCoursesByDosen(formData.pic) : [];
@@ -569,7 +579,11 @@ export function RequestSlotModal({
                   onChange={e => setFormData({ ...formData, day: e.target.value })}
                   className="w-full text-sm font-semibold px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-amber-400/50 focus:border-amber-400 focus:outline-none min-h-[46px] transition-colors"
                 >
-                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+                  {DAYS_OF_WEEK.map(d => (
+                    <option key={d} value={d}>
+                      {d}{d === currentDay ? ' (Hari Ini)' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 

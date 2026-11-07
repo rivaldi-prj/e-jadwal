@@ -568,6 +568,7 @@ export function App() {
         onRequest={handleRequestBooking}
         allBookings={bookings}
         initialData={requestSlotTarget}
+        currentDay={currentDay}
         onOpenTrackModal={() => setTrackModalOpen(true)}
         onOpenGuideModal={() => setGuideModalOpen(true)}
       />
