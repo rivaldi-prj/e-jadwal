@@ -98,38 +98,48 @@ export function isBookingPast(booking) {
     const endTotalMin = endH * 60 + endM;
 
     const rawCreated = booking.requestedAt || booking.updatedAt || booking.approvedAt;
-    const createdDate = rawCreated ? new Date(rawCreated) : null;
-    const ageMs = createdDate ? (nowWib.getTime() - createdDate.getTime()) : null;
+    
+    // Jika tidak ada data timestamp pembuatan, gunakan perbandingan relatif terhadap hari ini di minggu berjalan
+    if (!rawCreated) {
+      if (bIdx < curIdx) return true;
+      if (bIdx === curIdx) return curTotalMin >= endTotalMin;
+      return false;
+    }
 
-    // 1. Jadwal berumur lebih dari 7 hari mutlak kedaluwarsa
-    if (ageMs !== null && ageMs >= 7 * 24 * 60 * 60 * 1000) {
+    const createdDate = new Date(rawCreated);
+    const cWib = new Date(createdDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+    const ageMs = nowWib.getTime() - cWib.getTime();
+
+    // 1. Jadwal berumur 7 hari atau lebih mutlak kedaluwarsa
+    if (ageMs >= 7 * 24 * 60 * 60 * 1000) {
       return true;
     }
 
-    // 2. Hari yang sama: kedaluwarsa saat jam selesai perkuliahan sudah lewat
-    if (bIdx === curIdx) {
-      return curTotalMin >= endTotalMin;
+    const cDayNum = cWib.getDay();
+    const cIdx = cDayNum === 0 ? 6 : cDayNum - 1;
+
+    let targetDate;
+    if (bIdx === cIdx) {
+      // Dibuat pada hari yang sama dengan jadwal perkuliahan (misal dibuat Sabtu untuk Sabtu)
+      targetDate = new Date(cWib.getFullYear(), cWib.getMonth(), cWib.getDate(), endH, endM, 0, 0);
+    } else if (bIdx > cIdx) {
+      // Dibuat untuk hari berikutnya dalam minggu yang sama (misal dibuat Senin untuk Rabu)
+      const diff = bIdx - cIdx;
+      targetDate = new Date(cWib.getFullYear(), cWib.getMonth(), cWib.getDate() + diff, endH, endM, 0, 0);
+    } else {
+      // bIdx < cIdx (misal dibuat Jumat/Sabtu/Minggu untuk awal minggu depan)
+      const diff = bIdx - cIdx + 7;
+      if (diff <= 3) {
+        // Pemesanan advance wajar di akhir pekan untuk awal minggu depan (maksimal 3 hari ke depan)
+        targetDate = new Date(cWib.getFullYear(), cWib.getMonth(), cWib.getDate() + diff, endH, endM, 0, 0);
+      } else {
+        // Selisih > 3 hari ke belakang (misal dibuat Selasa untuk Senin, kemungkinan salah pilih hari)
+        if (ageMs > 18 * 60 * 60 * 1000) return true;
+        targetDate = new Date(cWib.getFullYear(), cWib.getMonth(), cWib.getDate() + diff, endH, endM, 0, 0);
+      }
     }
 
-    // 3. Hari sebelum hari ini dalam siklus minggu berjalan (misal jadwal Senin, sedangkan hari ini Selasa-Minggu):
-    if (bIdx < curIdx) {
-      // Jika dibuat lebih dari 20 jam lalu atau tanpa timestamp, mutlak sudah lewat
-      if (ageMs === null || ageMs > 20 * 60 * 60 * 1000) {
-        return true;
-      }
-      // Jika baru diajukan (< 20 jam), periksa apakah dibuat pada hari jadwal atau setelahnya
-      if (createdDate) {
-        const createdWib = new Date(createdDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-        const cDayNum = createdWib.getDay();
-        const cIdx = cDayNum === 0 ? 6 : cDayNum - 1;
-        if (cIdx >= bIdx) {
-          return true;
-        }
-      }
-    }
-
-    // 4. Hari sesudah hari ini dalam minggu berjalan: belum kedaluwarsa
-    return false;
+    return nowWib.getTime() >= targetDate.getTime();
   } catch {
     return false;
   }
@@ -242,8 +252,9 @@ export function useScheduleStore() {
     setSyncTrigger(prev => prev + 1);
   }, []);
 
-  // Broadcast helper for multi-tab local sync
+  // Broadcast helper for multi-tab local sync & multi-device cloud realtime
   const broadcastChange = useCallback((type, payload) => {
+    // 1. Multi-tab pada browser perangkat yang sama
     try {
       if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         const channel = new BroadcastChannel(CHANNEL_NAME);
@@ -252,6 +263,21 @@ export function useScheduleStore() {
       }
     } catch (err) {
       console.warn('BroadcastChannel error:', err);
+    }
+
+    // 2. Multi-device cloud broadcast instan via Supabase Realtime WebSocket (< 200ms)
+    try {
+      const client = getSupabaseClient();
+      if (client) {
+        const ch = client.channel('public_bookings_realtime');
+        ch.send({
+          type: 'broadcast',
+          event: type === 'CONFIG_UPDATED' ? 'CONFIG_CHANGE' : 'SCHEDULE_CHANGE',
+          payload: { timestamp: Date.now() },
+        }).catch(() => {});
+      }
+    } catch {
+      // silent
     }
   }, []);
 
@@ -309,9 +335,9 @@ export function useScheduleStore() {
     let isMounted = true;
     let subscriptionChannel = null;
 
-    async function initCloudSync() {
+    async function fetchRemoteBookings() {
+      if (!isMounted) return;
       try {
-        // 1. Fetch remote bookings
         const { data: remoteBookings, error: bErr } = await client
           .from('bookings')
           .select('*')
@@ -352,12 +378,10 @@ export function useScheduleStore() {
             };
           });
 
-          // Otomatis hapus jadwal yang sudah berlalu (Senin/Selasa yang sudah lewat, dll)
+          // Otomatis hapus jadwal yang sudah berlalu (Senin/Selasa/Sabtu minggu lalu yang sudah lewat, dll)
           const expiredBookings = mapped.filter(b => isBookingPast(b));
           if (expiredBookings.length > 0) {
             const expiredIds = expiredBookings.map(b => b.id);
-            // Supabase JS v2 query builder is PromiseLike, not a full Promise — .catch() doesn't exist on it.
-            // Use async IIFE + try/catch instead.
             (async () => {
               try {
                 await client.from('bookings').delete().in('id', expiredIds);
@@ -369,9 +393,16 @@ export function useScheduleStore() {
           const validBookings = mapped.filter(b => !isBookingPast(b));
           setBookings(validBookings);
           localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(validBookings));
+          setLastSyncTime(new Date());
         }
+      } catch (err) {
+        console.warn('Supabase fetchRemoteBookings warning:', err);
+      }
+    }
 
-        // 2. Fetch remote zoom config
+    async function fetchRemoteConfig() {
+      if (!isMounted) return;
+      try {
         const { data: remoteConfig, error: cErr } = await client
           .from('zoom_config')
           .select('*')
@@ -390,112 +421,51 @@ export function useScheduleStore() {
           };
           setZoomConfig(mappedCfg);
           localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(mappedCfg));
+          setLastSyncTime(new Date());
         }
+      } catch (err) {
+        console.warn('Supabase fetchRemoteConfig warning:', err);
+      }
+    }
+
+    async function initCloudSync() {
+      try {
+        await Promise.all([fetchRemoteBookings(), fetchRemoteConfig()]);
 
         if (isMounted) {
           setCloudStatus('connected');
           setLastSyncTime(new Date());
         }
 
-        // 3. Realtime Listener across all connected devices
+        // Realtime Listener across all connected devices (PostgreSQL changes + Web Broadcast channel)
         subscriptionChannel = client
           .channel('public_bookings_realtime')
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'bookings' },
-            (payload) => {
-              if (!isMounted) return;
-              if (payload.eventType === 'INSERT') {
-                const hasGmeet2Tag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet2]');
-                const hasGmeetTag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet]');
-                const newB = {
-                  id: payload.new.id,
-                  day: payload.new.day,
-                  timeSlot: payload.new.time_slot,
-                  batch: payload.new.batch,
-                  note: payload.new.note,
-                  pic: payload.new.pic || '',
-                  updatedAt: payload.new.updated_at,
-                  status: payload.new.status || BOOKING_STATUS.APPROVED,
-                  requestedBy: payload.new.requested_by || '',
-                  requesterEmail: payload.new.requester_email || '',
-                  requestedAt: payload.new.requested_at || null,
-                  approvedAt: payload.new.approved_at || null,
-                  rejectReason: (payload.new.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
-                  room: payload.new.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom',
-                };
-                setBookings((prev) => {
-                  const existingLocal = prev.find((b) => b.id === newB.id);
-                  if (existingLocal) {
-                    if (!payload.new.room && !hasGmeetTag && !hasGmeet2Tag && existingLocal.room) {
-                      newB.room = existingLocal.room;
-                    }
-                    return prev;
-                  }
-                  const next = [...prev, newB];
-                  localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(next));
-                  return next;
-                });
-              } else if (payload.eventType === 'UPDATE') {
-                const hasGmeet2Tag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet2]');
-                const hasGmeetTag = payload.new.reject_reason && payload.new.reject_reason.includes('[ROOM:gmeet]');
-                const updatedB = {
-                  id: payload.new.id,
-                  day: payload.new.day,
-                  timeSlot: payload.new.time_slot,
-                  batch: payload.new.batch,
-                  note: payload.new.note,
-                  pic: payload.new.pic || '',
-                  updatedAt: payload.new.updated_at,
-                  status: payload.new.status || BOOKING_STATUS.APPROVED,
-                  requestedBy: payload.new.requested_by || '',
-                  requesterEmail: payload.new.requester_email || '',
-                  requestedAt: payload.new.requested_at || null,
-                  approvedAt: payload.new.approved_at || null,
-                  rejectReason: (payload.new.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
-                  room: payload.new.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom',
-                };
-                setBookings((prev) => {
-                  const existingLocal = prev.find((b) => b.id === updatedB.id);
-                  if (!payload.new.room && !hasGmeetTag && !hasGmeet2Tag && existingLocal?.room) {
-                    updatedB.room = existingLocal.room;
-                  }
-                  const next = prev.map((b) => (b.id === updatedB.id ? updatedB : b));
-                  localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(next));
-                  return next;
-                });
-              } else if (payload.eventType === 'DELETE') {
-                const deletedId = payload.old?.id;
-                if (deletedId) {
-                  setBookings((prev) => {
-                    const next = prev.filter((b) => b.id !== deletedId);
-                    localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(next));
-                    return next;
-                  });
-                }
-              }
-              setLastSyncTime(new Date());
+            () => {
+              if (isMounted) fetchRemoteBookings();
             }
           )
           .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'zoom_config' },
-            (payload) => {
-              if (!isMounted) return;
-              if (payload.new) {
-                const mappedCfg = {
-                  name: payload.new.name || DEFAULT_ZOOM_CONFIG.name,
-                  joinUrl: payload.new.join_url,
-                  meetingId: payload.new.meeting_id,
-                  passcode: payload.new.passcode,
-                  gmeetUrl: payload.new.gmeet_url || payload.new.gmeetUrl || DEFAULT_ZOOM_CONFIG.gmeetUrl,
-                  gmeetUrl2: payload.new.gmeet_url_2 || payload.new.gmeetUrl2 || DEFAULT_ZOOM_CONFIG.gmeetUrl2,
-                  operatorEmail: payload.new.operator_email || payload.new.operatorEmail || DEFAULT_ZOOM_CONFIG.operatorEmail,
-                };
-                setZoomConfig(mappedCfg);
-                localStorage.setItem(STORAGE_KEYS.ZOOM_CONFIG, JSON.stringify(mappedCfg));
-                setLastSyncTime(new Date());
-              }
+            () => {
+              if (isMounted) fetchRemoteConfig();
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'SCHEDULE_CHANGE' },
+            () => {
+              if (isMounted) fetchRemoteBookings();
+            }
+          )
+          .on(
+            'broadcast',
+            { event: 'CONFIG_CHANGE' },
+            () => {
+              if (isMounted) fetchRemoteConfig();
             }
           )
           .subscribe();
@@ -514,96 +484,19 @@ export function useScheduleStore() {
 
     initCloudSync();
 
-    // ── POLLING FALLBACK ───────────────────────────────────────────────────
-    // Re-fetch setiap 30 detik sebagai backup jika Realtime WebSocket terputus.
-    // Ini memastikan data tetap sinkron di Netlify production bahkan jika
-    // koneksi WebSocket long-lived putus karena timeout/proxy CDN.
-    const pollInterval = setInterval(async () => {
-      if (!isMounted) return;
-      try {
-        const { data: pollData } = await client.from('bookings').select('*').order('day');
-        if (isMounted && pollData) {
-          const mapped = pollData.map((b) => {
-            const hasGmeet2Tag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet2]');
-            const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
-            const room = b.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom';
-            return {
-              id: b.id,
-              day: b.day,
-              timeSlot: b.time_slot,
-              batch: b.batch,
-              note: b.note,
-              pic: b.pic || '',
-              updatedAt: b.updated_at,
-              status: b.status || BOOKING_STATUS.APPROVED,
-              requestedBy: b.requested_by || '',
-              requesterEmail: b.requester_email || '',
-              requestedAt: b.requested_at || null,
-              approvedAt: b.approved_at || null,
-              rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
-              room,
-            };
-          });
-
-          // Otomatis bersihkan jadwal yang sudah selesai
-          const expiredBookings = mapped.filter(b => isBookingPast(b));
-          if (expiredBookings.length > 0) {
-            const expiredIds = expiredBookings.map(b => b.id);
-            client.from('bookings').delete().in('id', expiredIds).then(() => {}).catch(() => {});
-          }
-
-          const validBookings = mapped.filter(b => !isBookingPast(b));
-          setBookings(validBookings);
-          localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(validBookings));
-          setLastSyncTime(new Date());
-        }
-      } catch {
-        // Silent: polling failure tidak perlu ditampilkan ke user
+    // ── POLLING FALLBACK (10 detik) ───────────────────────────────────────────
+    // Re-fetch setiap 10 detik sebagai backup jika Realtime WebSocket terputus.
+    const pollInterval = setInterval(() => {
+      if (isMounted) {
+        fetchRemoteBookings();
       }
-    }, 30000); // Setiap 30 detik
+    }, 10000); // 10 detik
 
     // ── VISIBILITAS TAB: refetch saat user kembali ke tab ini ───────────────────
-    const handleVisibilityChange = async () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && isMounted) {
-        try {
-          const { data: visData } = await client.from('bookings').select('*').order('day');
-          if (isMounted && visData) {
-            const mapped = visData.map((b) => {
-              const hasGmeet2Tag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet2]');
-              const hasGmeetTag = b.reject_reason && b.reject_reason.includes('[ROOM:gmeet]');
-              const room = b.room || (hasGmeet2Tag ? 'gmeet2' : hasGmeetTag ? 'gmeet' : null) || 'zoom';
-              return {
-                id: b.id,
-                day: b.day,
-                timeSlot: b.time_slot,
-                batch: b.batch,
-                note: b.note,
-                pic: b.pic || '',
-                updatedAt: b.updated_at,
-                status: b.status || BOOKING_STATUS.APPROVED,
-                requestedBy: b.requested_by || '',
-                requesterEmail: b.requester_email || '',
-                requestedAt: b.requested_at || null,
-                approvedAt: b.approved_at || null,
-                rejectReason: (b.reject_reason || '').replace('[ROOM:gmeet2]', '').replace('[ROOM:gmeet]', '').trim(),
-                room,
-              };
-            });
-
-            const expiredBookings = mapped.filter(b => isBookingPast(b));
-            if (expiredBookings.length > 0) {
-              const expiredIds = expiredBookings.map(b => b.id);
-              client.from('bookings').delete().in('id', expiredIds).then(() => {}).catch(() => {});
-            }
-
-            const validBookings = mapped.filter(b => !isBookingPast(b));
-            setBookings(validBookings);
-            localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(validBookings));
-            setLastSyncTime(new Date());
-          }
-        } catch {
-          // Silent
-        }
+        fetchRemoteBookings();
+        fetchRemoteConfig();
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
